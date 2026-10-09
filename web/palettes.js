@@ -4,7 +4,7 @@ import { FAMILIES, PALETTES, BASIC_COLORS, SOURCE_URL } from './lib/palettes.mjs
 import { TAXONOMY } from './lib/taxonomy.mjs';
 import {
   loadSelection, saveSelection, selectionParams, isActive, targetColors, attachSwatches,
-  matchingColorways, loadColorOverrides, colorName,
+  matchInfo, loadColorOverrides, colorName,
 } from './palette-filter.js';
 
 const $ = (s) => document.querySelector(s);
@@ -79,10 +79,14 @@ function bind() {
   $('#pal-clear').addEventListener('click', () => { sel.palettes = []; sel.colors = []; update(); });
 }
 
+// { signature, neutral } product counts for a selection.
 const countFor = (s) => {
   const targets = targetColors(s);
-  return products.filter((p) => matchingColorways(p, targets, s.match).length).length;
+  const c = { signature: 0, neutral: 0 };
+  for (const p of products) { const m = matchInfo(p, targets, s.match); if (m) c[m.kind]++; }
+  return c;
 };
+const total = (c) => c.signature + c.neutral;
 const n = (x) => x.toLocaleString('sv-SE');
 
 function update() {
@@ -108,14 +112,15 @@ function update() {
 
   if (products) {
     for (const el of document.querySelectorAll('[data-count]')) {
-      el.textContent = `${n(countFor({ ...sel, palettes: [el.dataset.count], colors: [] }))} products in stock`;
+      const c = countFor({ ...sel, palettes: [el.dataset.count], colors: [] });
+      el.textContent = `${n(c.signature)} in signature colours${sel.neutrals ? ` · ${n(c.neutral)} neutrals` : ''} (in stock)`;
     }
   }
-  const total = active && products ? countFor(sel) : null;
+  const counts = active && products ? countFor(sel) : null;
   $('#pal-summary').innerHTML = active
-    ? `<strong>${esc(parts.join(', '))}</strong>${total != null ? `<span class="muted"> · ${n(total)} products</span>` : ''}`
+    ? `<strong>${esc(parts.join(', '))}</strong>${counts ? `<span class="muted"> · ${n(counts.signature)} in signature colours${sel.neutrals ? `, ${n(counts.neutral)} neutrals` : ''}</span>` : ''}`
     : 'Nothing selected yet';
-  $('#pal-go').textContent = active ? (total != null ? `Show ${n(total)} products →` : 'Show products →') : 'Show all products';
+  $('#pal-go').textContent = active ? (counts ? `Show ${n(total(counts))} products →` : 'Show products →') : 'Show all products';
 }
 
 $('#source').href = SOURCE_URL;

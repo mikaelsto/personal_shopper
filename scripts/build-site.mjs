@@ -9,7 +9,7 @@ const root = fileURLToPath(new URL('..', import.meta.url));
 const out = `${root}_site`;
 
 export const DATA_FILES = ['products.json', 'price-history.json', 'meta.json', 'stores.json', 'color-names.json'];
-export const BROWSER_LIBS = ['normalize.mjs', 'taxonomy.mjs', 'shopify-map.mjs', 'colors.mjs', 'palettes.mjs'];
+export const BROWSER_LIBS = ['normalize.mjs', 'taxonomy.mjs', 'shopify-map.mjs', 'colors.mjs', 'palettes.mjs', 'palette-match.mjs'];
 
 await rm(out, { recursive: true, force: true });
 await mkdir(`${out}/data`, { recursive: true });

@@ -1,0 +1,48 @@
+name: Palette feedback
+
+# Triggered by "Send … to improve matching" on the site, which opens a pre-filled issue titled
+# "Palette feedback: N votes". Saves the votes as labels and replies with the matching accuracy.
+# Only issues opened by the repo owner are processed.
+on:
+  issues:
+    types: [opened]
+
+permissions:
+  contents: write
+  issues: write
+
+concurrency:
+  group: update-and-deploy
+  cancel-in-progress: false
+
+jobs:
+  save:
+    if: startsWith(github.event.issue.title, 'Palette feedback') && github.event.issue.user.login == github.repository_owner
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Save votes and score the matching
+        env:
+          ISSUE_BODY: ${{ github.event.issue.body }}
+          SUMMARY_FILE: ${{ runner.temp }}/summary.md
+        run: node scripts/palette-feedback.mjs
+      - name: Commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/palette-labels.json
+          if ! git diff --cached --quiet; then
+            git commit -m "Palette feedback from #${{ github.event.issue.number }}"
+            git push
+          fi
+      - name: Reply and close issue
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          [ -f "${{ runner.temp }}/summary.md" ] || echo "❌ Something went wrong; see the workflow log." > "${{ runner.temp }}/summary.md"
+          gh issue comment ${{ github.event.issue.number }} --body-file "${{ runner.temp }}/summary.md"
+          gh issue close ${{ github.event.issue.number }}

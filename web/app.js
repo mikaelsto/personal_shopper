@@ -6,7 +6,7 @@ import { fromShopify, isGiftCard, shopifyPageUrl } from './lib/shopify-map.mjs';
 import { PALETTES, paletteById } from './lib/palettes.mjs';
 import {
   loadSelection, saveSelection, selectionParams, isActive, targetColors, attachSwatches,
-  matchingColorways, loadColorOverrides, colorName,
+  matchingColorways, matchInfo, loadColorOverrides, colorName,
 } from './palette-filter.js';
 
 const REPO = 'mikaelsto/personal_shopper';
@@ -54,6 +54,10 @@ const compare = new Set(store.get('compare', []));
 let colorOverrides = {}; // data/color-names.json
 let palette = loadSelection(); // chosen seasons/colours; filters every category
 let targets = targetColors(palette);
+// 👍/👎 "is this in my palette?" votes: { "<productId> <selection>": { v: 1|-1, at, sent } }.
+// Sent to GitHub as labels that scripts/palette-eval.mjs scores the matching against.
+const votes = store.get('paletteVotes', {});
+const FEEDBACK_LINES_PER_ISSUE = 120; // keeps the pre-filled issue URL under GitHub's limit
 
 const state = {
   q: '', stores: new Set(), category: '', features: new Set(), cold: false,
@@ -72,6 +76,7 @@ async function init() {
   ]);
   colorOverrides = overrides;
   all = attachSwatches(data.products.map(withText), colorOverrides);
+  computeMatches(all);
   $('#meta').textContent = `updated ${new Date(data.generatedAt).toLocaleDateString('sv-SE')}`;
 
   // Pending stores live in this browser until the GitHub job has added them to stores.json.
@@ -134,6 +139,7 @@ function bind() {
     if (rm?.dataset.unpalette) setPalette({ palettes: palette.palettes.filter((id) => id !== rm.dataset.unpalette) });
     else if (rm?.dataset.uncolor) setPalette({ colors: palette.colors.filter((h) => h !== rm.dataset.uncolor) });
     else if (e.target.closest('#pal-clear-all')) setPalette({ palettes: [], colors: [] });
+    else if (e.target.closest('#pal-send')) sendFeedback();
   });
   $('#f-palette').addEventListener('change', (e) => {
     if (e.target.id === 'pal-add' && e.target.value) setPalette({ palettes: [...palette.palettes, e.target.value] });
@@ -164,6 +170,8 @@ function bind() {
     const cmp = e.target.closest('.cmp');
     const card = e.target.closest('.card');
     if (!card) return;
+    const v = e.target.closest('[data-vote]');
+    if (v) { e.stopPropagation(); return vote(card.dataset.id, Number(v.dataset.vote)); }
     if (cmp) {
       e.stopPropagation();
       toggleCompare(card.dataset.id, cmp.querySelector('input'));
@@ -209,11 +217,47 @@ function syncControls() {
 }
 
 // ---------- Palette filter ----------
-const inPalette = (p) => !targets.length || matchingColorways(p, targets, palette.match).length > 0;
+// p._pm = best match { kind: 'signature'|'neutral', dE, swatch, target } for the current selection.
+function computeMatches(list) {
+  for (const p of list) p._pm = targets.length ? matchInfo(p, targets, palette.match) : null;
+}
+const inPalette = (p) => !targets.length || !!p._pm;
+
+const selKey = () => selectionParams(palette).toString();
+const voteOf = (p) => votes[`${p.id} ${selKey()}`]?.v ?? 0;
+
+function vote(id, v) {
+  const key = `${id} ${selKey()}`;
+  if (votes[key]?.v === v) delete votes[key];
+  else votes[key] = { v, at: new Date().toISOString().slice(0, 10), sent: false };
+  store.set('paletteVotes', votes);
+  renderPaletteFilter();
+  // Update the card in place (re-sorting now would make it jump); 👎 moves it to the end next time.
+  const card = document.querySelector(`.card[data-id="${CSS.escape(id)}"]`);
+  card?.querySelectorAll('[data-vote]').forEach((b) => b.setAttribute('aria-pressed', votes[key]?.v === Number(b.dataset.vote)));
+  card?.classList.toggle('rated-down', votes[key]?.v === -1);
+}
+
+// Opens a pre-filled GitHub issue with unsent votes; the "Palette feedback" workflow
+// adds them to data/palette-labels.json and replies with the current matching accuracy.
+function sendFeedback() {
+  const unsent = Object.entries(votes).filter(([, x]) => !x.sent).slice(0, FEEDBACK_LINES_PER_ISSUE);
+  if (!unsent.length) return;
+  const lines = unsent.map(([key, x]) => `${x.v > 0 ? '+' : '-'} ${key}`);
+  const url = `https://github.com/${REPO}/issues/new?` + new URLSearchParams({
+    title: `Palette feedback: ${unsent.length} votes`,
+    body: `Votes from Personal Shopper ("is this product in my palette?"). Submit the issue; a workflow saves them as labels.\n\n\`\`\`\n${lines.join('\n')}\n\`\`\``,
+  });
+  for (const [key] of unsent) votes[key].sent = true;
+  store.set('paletteVotes', votes);
+  window.open(url, '_blank', 'noopener');
+  renderPaletteFilter();
+}
 
 function setPalette(change) {
   palette = { ...palette, ...change };
   targets = targetColors(palette);
+  computeMatches(all);
   saveSelection(palette);
   buildFilters(); // category counts follow the palette
   apply();
@@ -243,7 +287,19 @@ function renderPaletteFilter() {
     <div class="pal-links">
       <a href="${esc(pickerUrl)}">${isActive(palette) ? 'Edit on palette page' : 'Browse palettes & colours'} →</a>
       ${isActive(palette) ? '<button id="pal-clear-all" class="link">Clear</button>' : ''}
-    </div>`;
+    </div>
+    ${feedbackHtml()}`;
+}
+
+function feedbackHtml() {
+  const all = Object.values(votes);
+  if (!all.length) return isActive(palette) ? '<p class="note">Tip: rate products with 👍/👎 to help improve colour matching.</p>' : '';
+  const up = all.filter((x) => x.v > 0).length;
+  const unsent = all.filter((x) => !x.sent).length;
+  return `<div class="pal-feedback">
+    <span>Your ratings: ${up} 👍 · ${all.length - up} 👎</span>
+    ${unsent ? `<button id="pal-send" class="link">Send ${Math.min(unsent, FEEDBACK_LINES_PER_ISSUE)} to improve matching ↗</button>` : '<span class="muted">All sent, thanks!</span>'}
+  </div>`;
 }
 
 const isCold = (p) => COLD_SUBS.includes(p.subcategory) || p.category === 'midlayers' || p.features.some((f) => COLD_FEATURES.includes(f));
@@ -279,7 +335,14 @@ function apply() {
     discount: (a, b) => discount(b) - discount(a),
     newest: (a, b) => String(b.firstSeen).localeCompare(String(a.firstSeen)),
   };
-  filtered.sort(sorters[state.sort]);
+  // With a palette: signature colours first, then neutrals, then products you rated 👎;
+  // within a group by colour closeness (relevance) or the chosen sort.
+  const group = (p) => (voteOf(p) < 0 ? 2 : p._pm?.kind === 'neutral' ? 1 : 0);
+  const byMatch = (a, b) => (a._pm?.dE ?? 99) - (b._pm?.dE ?? 99) || score(b) - score(a);
+  const sorter = sorters[state.sort];
+  filtered.sort(targets.length
+    ? (a, b) => group(a) - group(b) || (state.sort === 'relevance' ? byMatch(a, b) : sorter(a, b))
+    : sorter);
   shown = PAGE;
   render();
 }
@@ -297,14 +360,43 @@ function swatchesHtml(p) {
   if (!p._swatches?.length) return '';
   const hits = new Set(targets.length ? matchingColorways(p, targets, palette.match).map((s) => s.name) : []);
   const dots = p._swatches.slice(0, 8).map((s) => `<i class="dot ${hits.has(s.name) ? 'hit' : ''}" style="background:${esc(s.hex)}" title="${esc(s.name)}"></i>`).join('');
-  const label = hits.size ? `<span class="hit-label">${esc([...hits].slice(0, 2).join(', '))}</span>` : '';
+  const m = p._pm;
+  const label = m
+    ? `<span class="hit-label" title="${esc(`${m.swatch.name} (${m.swatch.source === 'photo' ? 'colour read from photo' : 'from colour name'}) ≈ ${m.target.name}, ΔE ${m.dE.toFixed(1)}`)}">≈ ${esc(m.target.name)}</span>`
+    : '';
   return `<span class="dots">${dots}${p._swatches.length > 8 ? '<span class="muted">+</span>' : ''}${label}</span>`;
 }
 
+const SECTIONS = ['Your signature colours', 'Your neutrals', 'Rated not my colour'];
+
 function render() {
-  $('#count').textContent = `${filtered.length} products${isActive(palette) ? ' in your palette' : ''}`;
-  $('#grid').innerHTML = filtered.slice(0, shown).map((p) => `
-    <article class="card ${p.available ? '' : 'oos'}" data-id="${esc(p.id)}">
+  const groups = [0, 0, 0];
+  for (const p of filtered) groups[voteOf(p) < 0 ? 2 : p._pm?.kind === 'neutral' ? 1 : 0]++;
+  $('#count').textContent = targets.length
+    ? `${filtered.length} products in your palette · ${groups[0]} in signature colours · ${groups[1]} neutrals`
+    : `${filtered.length} products`;
+  let lastGroup = -1;
+  $('#grid').innerHTML = filtered.slice(0, shown).map((p) => {
+    const g = voteOf(p) < 0 ? 2 : p._pm?.kind === 'neutral' ? 1 : 0;
+    const head = targets.length && g !== lastGroup ? `<h2 class="grid-section">${SECTIONS[g]} <span class="muted">${groups[g]}</span></h2>` : '';
+    lastGroup = g;
+    return head + cardHtml(p);
+  }).join('');
+  $('#more').hidden = shown >= filtered.length;
+  updateCompareBar();
+}
+
+function voteHtml(p) {
+  if (!targets.length) return '';
+  const v = voteOf(p);
+  return `<div class="vote"><span>In your palette?</span>
+    <button data-vote="1" aria-pressed="${v > 0}" title="Yes, my colour">👍</button>
+    <button data-vote="-1" aria-pressed="${v < 0}" title="No, not my colour">👎</button></div>`;
+}
+
+function cardHtml(p) {
+  return `
+    <article class="card ${p.available ? '' : 'oos'} ${targets.length && voteOf(p) < 0 ? 'rated-down' : ''}" data-id="${esc(p.id)}">
       <div class="img">${p.images[0] ? `<img loading="lazy" src="${esc(thumb(p.images[0]))}" alt="">` : ''}</div>
       ${p.compareAt ? `<span class="badge">−${Math.round((1 - p.price / p.compareAt) * 100)}%</span>` : ''}
       <label class="cmp"><input type="checkbox" ${compare.has(p.id) ? 'checked' : ''}> Compare</label>
@@ -315,10 +407,9 @@ function render() {
         ${priceHtml(p)}
         ${swatchesHtml(p)}
         <span class="sub">${p.available ? `Sizes: ${esc([...new Set(p.sizesInStock.map(shortSize))].join(' ') || 'one size')}` : 'Sold out'}</span>
+        ${voteHtml(p)}
       </div>
-    </article>`).join('');
-  $('#more').hidden = shown >= filtered.length;
-  updateCompareBar();
+    </article>`;
 }
 
 // ---------- Compare ----------
@@ -532,6 +623,7 @@ async function loadLive(s) {
     console.warn(`Live fetch failed for ${s.name}:`, err);
     liveStatus.set(s.id, 'error');
   }
+  computeMatches(fetched);
   all = all.filter((p) => p.store !== s.id).concat(fetched);
   buildFilters();
   apply();

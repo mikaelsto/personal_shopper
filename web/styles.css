@@ -289,3 +289,16 @@ dialog.narrow { width: min(520px, 94vw); }
   .ov-tile { height: 36px; }
   .ov-tile.neutral { height: 26px; }
 }
+
+/* Palette ranking + feedback */
+.grid-section { grid-column: 1 / -1; margin: 10px 0 -4px; font-size: 16px; }
+.grid-section:first-child { margin-top: 0; }
+.grid-section .muted { font-weight: 400; margin-left: 4px; }
+.vote { display: flex; align-items: center; gap: 4px; margin-top: 6px; padding-top: 6px; border-top: 1px dashed var(--line); font-size: 12px; color: var(--muted); }
+.vote span { margin-right: auto; }
+.vote button { border: 1px solid var(--line); background: var(--surface); border-radius: 8px; padding: 2px 8px; cursor: pointer; font-size: 14px; filter: grayscale(1); opacity: .7; }
+.vote button:hover { opacity: 1; filter: none; }
+.vote button[aria-pressed=true] { filter: none; opacity: 1; border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, var(--surface)); }
+.card.rated-down .img { opacity: .4; }
+.pal-feedback { display: flex; flex-direction: column; gap: 2px; margin-top: 10px; padding: 8px 10px; border-radius: 8px; background: var(--chip); font-size: 13px; }
+.pal-feedback .link { text-align: left; }
