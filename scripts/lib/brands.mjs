@@ -48,8 +48,19 @@ function prettify(raw) {
   ).join('');
 }
 
-// Returns { brand, brandKey, brandLine } for a raw store brand string.
-export function normalizeBrand(raw) {
+// Numbers that are real brands; any other purely numeric vendor ("0") is a store placeholder.
+const NUMERIC_BRANDS = new Set(['361']);
+
+// A usable store brand: not blank and not a placeholder number like Bandit's vendor "0".
+export const isBrand = (raw) => {
+  const key = brandKey(raw);
+  return key !== '' && (!/^\d+$/.test(key) || NUMERIC_BRANDS.has(key));
+};
+
+// Returns { brand, brandKey, brandLine } for a raw store brand string; `fallback` (the store's
+// own brand) is used when the store gives none or a placeholder.
+export function normalizeBrand(raw, fallback = null) {
+  if (!isBrand(raw)) raw = isBrand(fallback) ? fallback : null;
   if (!raw) return { brand: null, brandKey: null, brandLine: null };
   let key = brandKey(raw);
   key = ALIASES[key] ?? key;

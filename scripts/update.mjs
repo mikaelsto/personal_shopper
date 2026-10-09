@@ -68,7 +68,8 @@ if (foreign.length) {
 // Merge: refreshed stores replace their products; others are kept as-is.
 // Products from stores no longer in stores.json are dropped.
 const registered = new Set(STORES.map((s) => s.id));
-const merged = previous.products.filter((p) => !fresh.has(p.store) && registered.has(p.store)).map(upgradeProduct);
+const storeById = new Map(STORES.map((s) => [s.id, s]));
+const merged = previous.products.filter((p) => !fresh.has(p.store) && registered.has(p.store)).map((p) => upgradeProduct(p, storeById.get(p.store)));
 for (const products of fresh.values()) {
   for (const p of products) {
     const old = prevById.get(p.id);

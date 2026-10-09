@@ -98,6 +98,7 @@
   {
     "id": "banditrunning",
     "name": "Bandit",
+    "brand": "Bandit Running",
     "origin": "https://banditrunning.com",
     "platform": "shopify",
     "base": "https://banditrunning.com",

@@ -2,7 +2,7 @@
 // and derives category, gender, function features, fibres and materials from the text.
 
 import { classify, department } from './taxonomy.mjs';
-import { normalizeBrand } from './brands.mjs';
+import { isBrand, normalizeBrand } from './brands.mjs';
 
 // Function keywords (English + Swedish). Categories live in taxonomy.mjs, fibres in FABRICS below.
 const FEATURES = [
@@ -75,8 +75,12 @@ function extractMaterials(text) {
   return line ? [line.replace(/^[-•\s]+/, '').slice(0, 140)] : [];
 }
 
+// A product without a brand of its own gets the store's (`brand` in stores.json, else its name).
+const storeBrand = (store) => store?.brand ?? store?.name ?? null;
+
 // Brings a product saved by an older version up to date (stores that failed keep their old data).
-export function upgradeProduct(p) {
+export function upgradeProduct(p, store) {
+  if (!isBrand(p.brand)) Object.assign(p, normalizeBrand(null, storeBrand(store) ?? p.storeName));
   if (p.fabrics) return p;
   const text = `${p.title} ${p.productType ?? ''} ${p.description ?? ''}`;
   return Object.assign(p, { features: detectFeatures(text), fabrics: detectFabrics(text) });
@@ -104,7 +108,7 @@ export function normalizeProduct(p) {
     storeBase: p.store.base,
     cart: p.cart, // "shopify" -> cart permalink supported
     title: p.title,
-    ...normalizeBrand(p.brand), // brand (display), brandKey (filter), brandLine (sub-line, e.g. "Nike ACG")
+    ...normalizeBrand(p.brand, storeBrand(p.store)), // brand (display), brandKey (filter), brandLine (sub-line, e.g. "Nike ACG")
     url: p.url,
     productType: p.productType || null,
     category: department(subcategory), // master taxonomy department, e.g. "tops"
