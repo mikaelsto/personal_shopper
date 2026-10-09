@@ -20,9 +20,9 @@ Rules live in `scripts/lib/taxonomy.mjs`; products the rules can only guess are 
 
 ## Outerwear
 
-- **Wind & rain jackets** `outerwear/wind-rain` · 157 products
+- **Wind & rain jackets** `outerwear/wind-rain` · 156 products
 - **Shell jackets** `outerwear/shell` · 52 products
-- **Down & insulated** `outerwear/insulated` · 102 products
+- **Down & insulated** `outerwear/insulated` · 103 products
 - **Vests & gilets** `outerwear/vests` · 32 products
 - **Other jackets** `outerwear/jackets` · 14 products
 
@@ -129,7 +129,7 @@ Rules live in `scripts/lib/taxonomy.mjs`; products the rules can only guess are 
 | KA-YO | Herr Underställ | Tops › Base layer tops (10), Tops › Long sleeve (1) |
 | KA-YO | Herr Vandringsskor | Footwear › Hiking (29) |
 | KA-YO | Herr Vardagsskor | Footwear › Casual & lifestyle (109), Footwear › Boots (1) |
-| KA-YO | Herr Vind & Regnjackor | Outerwear › Wind & rain jackets (97), Outerwear › Down & insulated (6), Outerwear › Shell jackets (3) |
+| KA-YO | Herr Vind & Regnjackor | Outerwear › Wind & rain jackets (96), Outerwear › Down & insulated (6), Outerwear › Shell jackets (3) |
 | KA-YO | Herr linnen | Tops › Singlets & tanks (31) |
 | KA-YO | Herr skalbyxor | Bottoms › Shell & rain pants (12) |
 | KA-YO | Herr skjortor | Tops › Shirts (29) |
@@ -161,7 +161,7 @@ Rules live in `scripts/lib/taxonomy.mjs`; products the rules can only guess are 
 | KA-YO | Vattenflaskor | Accessories › Hydration (6) |
 | KA-YO | Väskor & Ryggsäckar | Bags › Backpacks (1) |
 | KA-YO | Väskor | Bags › Small bags & running belts (1) |
-| Satisfy | (none) | Tops › T-shirts (86), Other › Other (36), Accessories › Caps (35), Bottoms › Shorts (34), Tops › Singlets & tanks (32), Tops › Long sleeve (26), Accessories › Neck warmers, bandanas & balaclavas (16), Tops › Shirts (13), Bottoms › Pants (10), Mid layers › Hoodies & sweatshirts (8), Mid layers › Fleece, knit & half-zips (8), Bottoms › Tights & leggings (7), Accessories › Socks (5), Outerwear › Other jackets (5), Accessories › Beanies (4), Accessories › Gloves & mittens (4), Outerwear › Wind & rain jackets (4), Tops › Base layer tops (3), Footwear › Road running (2), Accessories › Hydration (2), Accessories › Other accessories (2), Accessories › Watches (2), Gear & lifestyle › Books & magazines (2), Footwear › Boots (1), Bottoms › Shell & rain pants (1), Accessories › Hats & headbands (1) |
+| Satisfy | (none) | Tops › T-shirts (86), Other › Other (36), Accessories › Caps (35), Bottoms › Shorts (34), Tops › Singlets & tanks (32), Tops › Long sleeve (26), Accessories › Neck warmers, bandanas & balaclavas (16), Tops › Shirts (13), Bottoms › Pants (10), Mid layers › Hoodies & sweatshirts (8), Mid layers › Fleece, knit & half-zips (8), Bottoms › Tights & leggings (7), Accessories › Socks (5), Outerwear › Other jackets (5), Accessories › Beanies (4), Accessories › Gloves & mittens (4), Outerwear › Wind & rain jackets (4), Tops › Base layer tops (3), Footwear › Road running (2), Accessories › Hydration (2), Accessories › Other accessories (2), Accessories › Watches (2), Gear & lifestyle › Books & magazines (2), Footwear › Boots (1), Bottoms › Shell & rain pants (1), Accessories › Hats & headbands (1), Outerwear › Down & insulated (1) |
 | Satisfy | Accessory | Accessories › Other accessories (1) |
 | Satisfy | Bandana | Accessories › Neck warmers, bandanas & balaclavas (20) |
 | Satisfy | Belt | Accessories › Other accessories (3) |
