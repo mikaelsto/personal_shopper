@@ -8,7 +8,7 @@ One place to browse running and fashion apparel from several stores. It has a sh
 
 ## Stores
 
-Stores are listed in `data/stores.json`. Defaults: **Satisfy**, **UVU**, **KA-YO**.
+Stores are listed in `data/stores.json`. Defaults: **Satisfy**, **UVU**, **KA-YO**, **Löplabbet**, **Passa Sports** (running shoes, clothes and socks only).
 
 ### Adding a store
 
@@ -30,8 +30,21 @@ How a store is read, tried in this order:
 |---|---|---|
 | `shopify` | Public `products.json` feed, with prices in SEK | Satisfy, UVU |
 | `geins` | The storefront's own product API, using the public key in the page | KA-YO |
+| `intersport` | Intersport-group storefront: listing pages embed the full search result (in-stock items only, no per-size stock) | Löplabbet |
 | `jsonld` | Sitemap, then the structured product data on each page (max 1000 pages per run) | On |
-| `import` | Nothing automatic works: collect the products with Claude in Chrome into `data/imports/<id>.json` | adidas |
+| `import` | Nothing automatic works: collect the products with Claude in Chrome into `data/imports/<id>.json` | Passa Sports |
+
+### Refreshing Passa Sports (Claude in Chrome)
+
+Passa Sports is behind Cloudflare, so the daily job can't fetch it; it re-uses the last collected file.
+To refresh it, ask Claude to re-run the Passa collector. What happens:
+
+1. `node scripts/import-server.mjs` starts a receiver on localhost:8787.
+2. `scripts/collectors/passasports.js` runs in a passasports.se tab in Chrome. It reads Löparskor, Löparkläder and Löparstrumpor (about 190 pages) and posts the result to the receiver.
+3. The receiver writes `data/imports/passasports.json`.
+4. Commit that file, and the next update includes it.
+
+The first time, Chrome asks whether passasports.se may access apps on this device; allow it.
 
 ## Taxonomy
 

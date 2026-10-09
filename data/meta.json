@@ -3,27 +3,33 @@
     "satisfy": {
       "ok": true,
       "count": 714,
-      "updatedAt": "2026-10-09T17:28:33.560Z"
+      "updatedAt": "2026-10-09T17:44:46.197Z"
     },
     "uvu": {
       "ok": true,
       "count": 104,
-      "updatedAt": "2026-10-09T17:28:35.326Z"
+      "updatedAt": "2026-10-09T17:44:47.653Z"
     },
     "kayo": {
       "ok": true,
       "count": 2204,
-      "updatedAt": "2026-10-09T17:28:45.938Z"
+      "updatedAt": "2026-10-09T17:44:58.547Z"
     },
     "loplabbet": {
       "ok": true,
       "count": 2813,
-      "updatedAt": "2026-10-09T17:29:44.699Z"
+      "updatedAt": "2026-10-09T17:45:49.903Z"
+    },
+    "passasports": {
+      "ok": true,
+      "count": 6781,
+      "updatedAt": "2026-10-09T17:45:50.418Z"
     }
   },
-  "lastRun": "2026-10-09T17:29:44.753Z",
-  "total": 5835,
+  "lastRun": "2026-10-09T17:45:50.481Z",
+  "total": 12616,
   "unmapped": {
+    "passasports: Löparkläder/Kläder": 171,
     "kayo: Objekt": 4
   }
 }

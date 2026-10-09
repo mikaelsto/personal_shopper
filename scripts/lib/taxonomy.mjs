@@ -139,9 +139,11 @@ const RULES = [
   ['footwear/other', /\b(shoes?|footwear|trainers?)\b|\bskor\b/, { generic: true }],
 
   // Outerwear (specific types before mid layers; generic jackets last)
-  ['outerwear/insulated', /\b(down (jackets?|vests?|parkas?|hood(ie|y)s?)|puffers?|insulated (jackets?|hood(ie|y)s?|vests?)|padding (jkt|jackets?)|padded jackets?|parkas?)\b|dunjack|dunväst|\bdun\b/],
+  ['outerwear/insulated', /\b(down (jackets?|vests?|parkas?|hood(ie|y)s?)|puffers?|insulated (jackets?|hood(ie|y)s?|vests?)|padding (jkt|jackets?)|padded jackets?|parkas?|warm hybrid)\b|dunjack|dunväst|\bdun\b|isolerad/],
   ['outerwear/shell', /\b(shell jackets?|hard ?shells?|3l (jackets?|shells?)|gore-?tex (jackets?|shells?))\b|skaljack/],
   ['outerwear/wind-rain', /\b(wind ?(jackets?|breakers?|shells?|anoraks?|hood(ie|y)s?|smocks?)|windbreakers?|rain ?(jackets?|coats?|shells?)|anoraks?|waterproof jackets?)\b|vindjack|regnjack|löparjack|vind & regn|vind- och regn/],
+  // Running jackets named by their weather tech: "Repel Jacka", "Storm-FIT Jacket", "GTX Jacka".
+  ['outerwear/wind-rain', /\b(repel|storm-?fit|weather|waterproof|gtx|gore-?tex|shield|hydro|wind|rain|vind|regn)\b.*\b(jacka|jacket|jkt)\b/],
   ['outerwear/vests', /\b(gilets?|body ?warmers?|wind ?vests?|insulated vests?)\b|västar|\bväst\b/],
 
   // Bottoms
@@ -156,30 +158,37 @@ const RULES = [
 
   // Mid layers
   ['midlayers/hoodies', /\b(hood(ie|y)s?|hooded|sweatshirts?|crew ?necks?|crewneck|sweats|pullovers?)\b|huvtröj|collegetröj/],
-  ['tops/long-sleeve', /\b(long ?sleeves?|l\/s|longsleeves?|long ?tees?|ls tee)\b|långärm/],
+  ['tops/long-sleeve', /\b(long ?sleeves?|l\/s|longsleeves?|long ?tees?|long-t|ls tee)\b|långärm/],
   ['midlayers/fleece-knit', /\b(fleeces?|knit(ted|wear)?|sweaters?|cardigans?|half[- ]?zips?|quarter[- ]?zips?|1\/4[- ]?zip|1\/2[- ]?zip|mid ?layers?)\b|stickat|stickad|fleece|mellanlager/],
   ['outerwear/jackets', /\b(jackets?|jkt|coats?|overshirts?|outerwear|blazers?)\b|jacka|jackor|ytterkläder/, { generic: true }],
-  ['midlayers/hoodies', /tröja|tröjor/, { generic: true }],
+  // A plain "tröja" in a running store is usually a long-sleeve running top.
+  ['tops/long-sleeve', /tröja|tröjor/, { generic: true }],
 
   // Tops
   ['tops/base-layers', /\b(base ?layers?|baselayers?|thermal tops?)\b|underställ|baslager/],
-  ['tops/sports-bras', /\b(sports? ?bras?|bras?)\b|bh:ar|sport-?bh/],
+  ['tops/sports-bras', /\b(sports? ?bras?|bras?)\b|bh:ar|sport-?bh|\bbh\b/],
   ['tops/singlets', /\b(singlets?|tanks?|tank ?tops?|crop ?tops?|cut-? ?offs?|muscle)\b|linne/],
   // English "vest" is a singlet in running (UK) but a gilet in Swedish stores' categories.
   ['tops/singlets', /\bvests?\b/, { weight: 1.5 }],
-  ['tops/t-shirts', /\b(t-?shirts?|tees?|jerseys?|running tops?|training tops?)\b/, { weight: 1.5 }],
+  ['tops/t-shirts', /\b(t-?shirts?|tees?|jerseys?|running tops?|training tops?)\b|\bt-shirt|kortärm/, { weight: 1.5 }],
   ['tops/shirts', /\b(shirts?|flannels?)\b|skjort/],
   ['tops/t-shirts', /\b(tops?)\b|överdel|topp/, { generic: true }],
 ];
 
 const GENDER_WORDS = /\b(herr|dam|barn|junior|men'?s|women'?s|mens|womens|unisex)\s*/g;
 
+// First specific rule that matches; a generic rule only when no specific one does
+// (so "T-shirt löpartröja" is a T-shirt, not the generic "tröja").
 function firstMatch(text) {
   if (!text) return null;
+  let fallback = null;
   for (const [id, re, opts = {}] of RULES) {
-    if (re.test(text)) return { id, weight: opts.weight ?? (opts.generic ? 1 : 2), generic: !!opts.generic };
+    if (!re.test(text)) continue;
+    const m = { id, weight: opts.weight ?? (opts.generic ? 1 : 2), generic: !!opts.generic };
+    if (!m.generic) return m;
+    fallback ??= m;
   }
-  return null;
+  return fallback;
 }
 
 // Returns { subcategory, generic } — generic=true means "good guess, refine if possible".

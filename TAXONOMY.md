@@ -6,44 +6,44 @@ Rules live in `scripts/lib/taxonomy.mjs`; products the rules can only guess are 
 
 ## Tops
 
-- **T-shirts** `tops/t-shirts` · 536 products
-- **Long sleeve** `tops/long-sleeve` · 187 products
-- **Singlets & tanks** `tops/singlets` · 221 products
-- **Shirts** `tops/shirts` · 67 products
-- **Sports bras** `tops/sports-bras` · 36 products
-- **Base layer tops** `tops/base-layers` · 41 products
+- **T-shirts** `tops/t-shirts` · 1171 products
+- **Long sleeve** `tops/long-sleeve` · 703 products
+- **Singlets & tanks** `tops/singlets` · 622 products
+- **Shirts** `tops/shirts` · 73 products
+- **Sports bras** `tops/sports-bras` · 184 products
+- **Base layer tops** `tops/base-layers` · 45 products
 
 ## Mid layers
 
-- **Fleece, knit & half-zips** `midlayers/fleece-knit` · 119 products
-- **Hoodies & sweatshirts** `midlayers/hoodies` · 96 products
+- **Fleece, knit & half-zips** `midlayers/fleece-knit` · 189 products
+- **Hoodies & sweatshirts** `midlayers/hoodies` · 173 products
 
 ## Outerwear
 
-- **Wind & rain jackets** `outerwear/wind-rain` · 249 products
-- **Shell jackets** `outerwear/shell` · 52 products
-- **Down & insulated** `outerwear/insulated` · 103 products
-- **Vests & gilets** `outerwear/vests` · 36 products
-- **Other jackets** `outerwear/jackets` · 3 products
+- **Wind & rain jackets** `outerwear/wind-rain` · 418 products
+- **Shell jackets** `outerwear/shell` · 39 products
+- **Down & insulated** `outerwear/insulated` · 115 products
+- **Vests & gilets** `outerwear/vests` · 81 products
+- **Other jackets** `outerwear/jackets` · 211 products
 
 ## Bottoms
 
-- **Shorts** `bottoms/shorts` · 364 products
-- **Tights & leggings** `bottoms/tights` · 179 products
-- **Pants** `bottoms/pants` · 151 products
+- **Shorts** `bottoms/shorts` · 1044 products
+- **Tights & leggings** `bottoms/tights` · 745 products
+- **Pants** `bottoms/pants` · 260 products
 - **Shell & rain pants** `bottoms/shell-pants` · 27 products
-- **Skirts** `bottoms/skirts` · 3 products
+- **Skirts** `bottoms/skirts` · 5 products
 - **Base layer bottoms** `bottoms/base-layers` · 0 products
-- **Underwear** `bottoms/underwear` · 9 products
+- **Underwear** `bottoms/underwear` · 75 products
 
 ## Footwear
 
-- **Road running** `footwear/road-running` · 1249 products
-- **Trail running** `footwear/trail-running` · 277 products
+- **Road running** `footwear/road-running` · 3648 products
+- **Trail running** `footwear/trail-running` · 329 products
 - **Hiking** `footwear/hiking` · 43 products
 - **Boots** `footwear/boots` · 21 products
 - **Casual & lifestyle** `footwear/casual` · 192 products
-- **Slides & sandals** `footwear/slides-sandals` · 38 products
+- **Slides & sandals** `footwear/slides-sandals` · 39 products
 - **Court & tennis** `footwear/court` · 3 products
 - **Other footwear** `footwear/other` · 0 products
 
@@ -52,16 +52,16 @@ Rules live in `scripts/lib/taxonomy.mjs`; products the rules can only guess are 
 - **Caps** `accessories/caps` · 192 products
 - **Beanies** `accessories/beanies` · 87 products
 - **Hats & headbands** `accessories/hats` · 39 products
-- **Neck warmers, bandanas & balaclavas** `accessories/neckwear` · 57 products
+- **Neck warmers, bandanas & balaclavas** `accessories/neckwear` · 77 products
 - **Gloves & mittens** `accessories/gloves` · 53 products
-- **Socks** `accessories/socks` · 217 products
+- **Socks** `accessories/socks` · 651 products
 - **Sunglasses & eyewear** `accessories/sunglasses` · 87 products
 - **Watches** `accessories/watches` · 134 products
-- **Hydration** `accessories/hydration` · 65 products
+- **Hydration** `accessories/hydration` · 77 products
 - **Headlamps & running lights** `accessories/lights` · 38 products
 - **Insoles & shoe care** `accessories/insoles-care` · 48 products
 - **Supports, protection & anti-chafe** `accessories/protection` · 37 products
-- **Other accessories** `accessories/other` · 34 products
+- **Other accessories** `accessories/other` · 26 products
 
 ## Bags
 
@@ -93,7 +93,7 @@ Rules live in `scripts/lib/taxonomy.mjs`; products the rules can only guess are 
 | KA-YO | Bucket Hats | Accessories › Hats & headbands (5) |
 | KA-YO | Climb | Accessories › Other accessories (1) |
 | KA-YO | Dam Byxor | Bottoms › Pants (16) |
-| KA-YO | Dam Dunjackor | Outerwear › Down & insulated (9) |
+| KA-YO | Dam Dunjackor | Outerwear › Down & insulated (8), Outerwear › Wind & rain jackets (1) |
 | KA-YO | Dam Fleece & Stickat | Mid layers › Fleece, knit & half-zips (14), Mid layers › Hoodies & sweatshirts (2) |
 | KA-YO | Dam Linnen | Tops › Singlets & tanks (33) |
 | KA-YO | Dam Longsleeve T-shirts | Tops › Long sleeve (23) |
@@ -102,7 +102,7 @@ Rules live in `scripts/lib/taxonomy.mjs`; products the rules can only guess are 
 | KA-YO | Dam Löparskor | Footwear › Road running (103), Footwear › Trail running (1) |
 | KA-YO | Dam Shorts & Kjolar | Bottoms › Shorts (43), Bottoms › Tights & leggings (1) |
 | KA-YO | Dam Skalbyxor | Bottoms › Shell & rain pants (5) |
-| KA-YO | Dam Skaljackor | Outerwear › Shell jackets (8) |
+| KA-YO | Dam Skaljackor | Outerwear › Shell jackets (4), Outerwear › Wind & rain jackets (4) |
 | KA-YO | Dam Strumpor | Accessories › Socks (1) |
 | KA-YO | Dam T-shirts | Tops › T-shirts (35) |
 | KA-YO | Dam Tights | Bottoms › Tights & leggings (30), Bottoms › Shorts (4) |
@@ -124,13 +124,13 @@ Rules live in `scripts/lib/taxonomy.mjs`; products the rules can only guess are 
 | KA-YO | Herr Byxor | Bottoms › Pants (91), Bottoms › Shell & rain pants (4), Bottoms › Shorts (2) |
 | KA-YO | Herr Fleece & Stickat | Mid layers › Fleece, knit & half-zips (44), Mid layers › Hoodies & sweatshirts (3) |
 | KA-YO | Herr Longsleeve T-shirts | Tops › Long sleeve (59), Tops › Shirts (1) |
-| KA-YO | Herr Lättviktsdunjackor | Outerwear › Down & insulated (31) |
+| KA-YO | Herr Lättviktsdunjackor | Outerwear › Down & insulated (30), Outerwear › Wind & rain jackets (1) |
 | KA-YO | Herr Löparkläder | Bottoms › Pants (1) |
 | KA-YO | Herr Löparskor | Footwear › Road running (121), Footwear › Trail running (4) |
 | KA-YO | Herr Shorts | Bottoms › Shorts (98), Bottoms › Tights & leggings (2) |
-| KA-YO | Herr Skaljackor | Outerwear › Shell jackets (41), Outerwear › Wind & rain jackets (5), Outerwear › Down & insulated (1) |
+| KA-YO | Herr Skaljackor | Outerwear › Shell jackets (32), Outerwear › Wind & rain jackets (14), Outerwear › Down & insulated (1) |
 | KA-YO | Herr Strumpor | Accessories › Socks (26) |
-| KA-YO | Herr T-shirts | Tops › T-shirts (190), Tops › Shirts (5), Mid layers › Fleece, knit & half-zips (3), Bottoms › Shorts (2), Tops › Singlets & tanks (2), Tops › Base layer tops (1), Mid layers › Hoodies & sweatshirts (1) |
+| KA-YO | Herr T-shirts | Tops › T-shirts (189), Tops › Shirts (5), Mid layers › Fleece, knit & half-zips (3), Bottoms › Shorts (2), Tops › Singlets & tanks (2), Tops › Base layer tops (1), Tops › Long sleeve (1), Mid layers › Hoodies & sweatshirts (1) |
 | KA-YO | Herr Tights | Bottoms › Tights & leggings (8), Bottoms › Shorts (2) |
 | KA-YO | Herr Trailrunning Skor | Footwear › Trail running (44), Footwear › Road running (1) |
 | KA-YO | Herr Underställ | Tops › Base layer tops (10), Tops › Long sleeve (1) |
@@ -189,7 +189,7 @@ Rules live in `scripts/lib/taxonomy.mjs`; products the rules can only guess are 
 | Löplabbet | Kläder/Strumpor | Accessories › Socks (147), Accessories › Supports, protection & anti-chafe (1) |
 | Löplabbet | Kläder/T-Shirt & Toppar/T-Shirt funktion | Tops › T-shirts (39), Tops › Shirts (2) |
 | Löplabbet | Kläder/T-Shirt & Toppar/T-Shirt | Accessories › Watches (1) |
-| Löplabbet | Kläder/T-shirt & Toppar | Tops › T-shirts (77), Tops › Long sleeve (25), Footwear › Road running (13), Mid layers › Fleece, knit & half-zips (9), Mid layers › Hoodies & sweatshirts (6), Tops › Shirts (2), Bottoms › Shorts (1) |
+| Löplabbet | Kläder/T-shirt & Toppar | Tops › T-shirts (75), Tops › Long sleeve (25), Footwear › Road running (13), Mid layers › Fleece, knit & half-zips (9), Mid layers › Hoodies & sweatshirts (6), Tops › Shirts (4), Bottoms › Shorts (1) |
 | Löplabbet | Kläder/Tights | Bottoms › Tights & leggings (65) |
 | Löplabbet | Kläder/Tights/Löpartights | Bottoms › Tights & leggings (25), Bottoms › Shorts (1) |
 | Löplabbet | Kläder/Tights/Träningstights | Bottoms › Tights & leggings (4) |
@@ -207,7 +207,7 @@ Rules live in `scripts/lib/taxonomy.mjs`; products the rules can only guess are 
 | Löplabbet | Löparskor/Distans | Footwear › Road running (325), Footwear › Trail running (2) |
 | Löplabbet | Löparskor/Friidrott | Footwear › Road running (12) |
 | Löplabbet | Löparskor/Promenad | Footwear › Casual & lifestyle (30), Footwear › Road running (3) |
-| Löplabbet | Löparskor/Tempo | Footwear › Road running (162), Footwear › Trail running (1) |
+| Löplabbet | Löparskor/Tempo | Footwear › Road running (163), Footwear › Trail running (1) |
 | Löplabbet | Löparskor/Terräng | Footwear › Trail running (135), Footwear › Road running (2) |
 | Löplabbet | Löparskor/Återhämtning | Footwear › Slides & sandals (6) |
 | Löplabbet | Skor/Löparskor/Distans/Neutral | Footwear › Road running (269) |
@@ -231,7 +231,7 @@ Rules live in `scripts/lib/taxonomy.mjs`; products the rules can only guess are 
 | Löplabbet | Tillbehör/Skydd | Accessories › Supports, protection & anti-chafe (25) |
 | Löplabbet | Tillbehör/Sulor | Accessories › Insoles & shoe care (12) |
 | Löplabbet | Tillbehör/Träningsredskap | Gear & lifestyle › Fitness equipment (49) |
-| Löplabbet | Tillbehör/Övriga accessoarer | Accessories › Other accessories (21), Accessories › Insoles & shoe care (8), Gear & lifestyle › Fitness equipment (4), Accessories › Neck warmers, bandanas & balaclavas (2), Accessories › Hats & headbands (1) |
+| Löplabbet | Tillbehör/Övriga accessoarer | Accessories › Other accessories (13), Footwear › Trail running (8), Accessories › Insoles & shoe care (8), Gear & lifestyle › Fitness equipment (4), Accessories › Neck warmers, bandanas & balaclavas (2), Accessories › Hats & headbands (1) |
 | Löplabbet | Utrustning/Elektronik | Gear & lifestyle › Headphones & electronics (2) |
 | Löplabbet | Utrustning/Elektronik/Mobiltillbehör | Gear & lifestyle › Headphones & electronics (9) |
 | Löplabbet | Utrustning/Elektronik/Pannlampor | Accessories › Headlamps & running lights (6) |
@@ -251,6 +251,11 @@ Rules live in `scripts/lib/taxonomy.mjs`; products the rules can only guess are 
 | Löplabbet | Utrustning/Övrigt/Skotillbehör | Accessories › Insoles & shoe care (16) |
 | Löplabbet | Utrustning/Övrigt/Skotillbehör/Skosulor | Accessories › Insoles & shoe care (4) |
 | Löplabbet | Utrustning/Övrigt/Träningsvästar | Outerwear › Vests & gilets (2) |
+| Passa Sports | Löparkläder/Kläder | Bottoms › Shorts (680), Tops › T-shirts (638), Bottoms › Tights & leggings (566), Tops › Long sleeve (515), Tops › Singlets & tanks (401), Outerwear › Other jackets (208), Footwear › Road running (173), Other › Other (171), Outerwear › Wind & rain jackets (154), Tops › Sports bras (148), Bottoms › Pants (109), Mid layers › Hoodies & sweatshirts (77), Mid layers › Fleece, knit & half-zips (70), Bottoms › Underwear (66), Outerwear › Vests & gilets (45), Outerwear › Down & insulated (14), Accessories › Hydration (11), Tops › Base layer tops (4), Tops › Shirts (4), Bottoms › Skirts (2) |
+| Passa Sports | Löparkläder/Tillbehör | Accessories › Hydration (1) |
+| Passa Sports | Löparskor/Skor | Footwear › Road running (2225), Footwear › Trail running (44), Footwear › Slides & sandals (1) |
+| Passa Sports | Löparstrumpor/Strumpor | Accessories › Socks (432), Accessories › Neck warmers, bandanas & balaclavas (20) |
+| Passa Sports | Löparstrumpor/Tillbehör | Accessories › Socks (2) |
 | Satisfy | (none) | Tops › T-shirts (103), Bottoms › Shorts (38), Accessories › Caps (35), Tops › Singlets & tanks (32), Tops › Long sleeve (27), Accessories › Neck warmers, bandanas & balaclavas (18), Tops › Shirts (13), Bottoms › Pants (10), Mid layers › Hoodies & sweatshirts (8), Mid layers › Fleece, knit & half-zips (8), Bottoms › Tights & leggings (7), Outerwear › Wind & rain jackets (7), Accessories › Sunglasses & eyewear (6), Accessories › Socks (5), Accessories › Gloves & mittens (5), Tops › Base layer tops (4), Accessories › Beanies (4), Footwear › Road running (3), Accessories › Hydration (3), Accessories › Other accessories (3), Bags › Small bags & running belts (2), Accessories › Watches (2), Gear & lifestyle › Books & magazines (2), Footwear › Boots (1), Bottoms › Shell & rain pants (1), Gear & lifestyle › Other gear (1), Accessories › Hats & headbands (1), Outerwear › Down & insulated (1) |
 | Satisfy | Accessory | Accessories › Other accessories (1) |
 | Satisfy | Bandana | Accessories › Neck warmers, bandanas & balaclavas (20) |
