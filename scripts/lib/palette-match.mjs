@@ -56,7 +56,9 @@ export const EXCLUDABLE = [
   { id: 'black', label: 'Black', hex: '#141414', test: ({ L, C }) => L < 22 && C < 10 },
   { id: 'white', label: 'White', hex: '#f7f7f5', test: ({ L, C }) => L > 90 && C < 6 },
   { id: 'offwhite', label: 'Off-white & cream', hex: '#efe6d2', test: ({ L, C, h }) => L > 84 && C >= 6 && C < 22 && h > 50 && h < 110 },
-  { id: 'grey', label: 'Grey', hex: '#8c8c8c', test: ({ L, C }) => L >= 22 && L <= 90 && C < 7 },
+  // Washed/pigment-dyed blacks and very dark greys: their own chip, so "Black" stays true black.
+  { id: 'charcoal', label: 'Dark grey & charcoal', hex: '#3e3f42', test: ({ L, C }) => L >= 22 && L < 45 && C < 10 },
+  { id: 'grey', label: 'Grey', hex: '#8c8c8c', test: ({ L, C }) => L >= 45 && L <= 90 && C < 7 },
   { id: 'navy', label: 'Navy', hex: '#1c2541', test: ({ L, C, h }) => L < 32 && C >= 8 && h > 230 && h < 320 },
   { id: 'beige', label: 'Beige & khaki', hex: '#c8b48e', test: ({ L, C, h }) => L >= 55 && L <= 84 && C >= 8 && C < 32 && h > 50 && h < 100 },
   { id: 'brown', label: 'Brown', hex: '#6b4a30', test: ({ L, C, h }) => L >= 15 && L < 55 && C >= 8 && h > 25 && h < 90 },
