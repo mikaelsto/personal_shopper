@@ -2,41 +2,11 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#000000">
-  <title>Personal Shopper · Feed</title>
-  <link rel="stylesheet" href="social.css">
+  <title>Runnista</title>
+  <!-- The feed moved to the start page; old /social/ links keep their filters. -->
+  <script>location.replace(`../${location.search}${location.hash}`);</script>
+  <meta http-equiv="refresh" content="0; url=../">
+  <link rel="canonical" href="../">
 </head>
-<body>
-  <!-- One product per screen: swipe up for the next, drag the photo left for its details. -->
-  <main id="feed" class="feed" aria-label="Products"></main>
-
-  <div id="loading" class="loading" role="status">
-    <span class="spinner" aria-hidden="true"></span>
-    <span>Loading products…</span>
-  </div>
-
-  <!-- Navigation layer, opened from ☰ in the photo's footer -->
-  <dialog id="sheet" class="sheet" aria-labelledby="sheet-title">
-    <div class="sheet-grab" aria-hidden="true"><i></i></div>
-    <header class="sheet-head">
-      <h2 id="sheet-title" class="sr-only">Navigation</h2>
-      <div class="tabs" role="tablist" aria-label="Navigation">
-        <button role="tab" id="tab-colours" data-tab="colours" aria-controls="sheet-body">Colours</button>
-        <button role="tab" id="tab-categories" data-tab="categories" aria-controls="sheet-body">Categories</button>
-        <button role="tab" id="tab-sizes" data-tab="sizes" aria-controls="sheet-body">Sizes</button>
-      </div>
-      <button class="icon-btn" data-close aria-label="Close">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
-      </button>
-    </header>
-    <div id="sheet-body" class="sheet-body" role="tabpanel"></div>
-    <footer class="sheet-foot">
-      <button id="clear-all" class="btn ghost">Clear all</button>
-      <button id="show" class="btn primary" data-close>Show products</button>
-    </footer>
-  </dialog>
-
-  <script type="module" src="social.js"></script>
-</body>
+<body><a href="../">Runnista</a></body>
 </html>

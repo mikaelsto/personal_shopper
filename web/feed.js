@@ -1,20 +1,22 @@
-// Personal Shopper as a feed: one product per screen, swipe up for the next one (like Reels and
+// Runnista as a feed: one product per screen, swipe up for the next one (like Reels and
 // TikTok) and drag the photo left for its details. The photo's footer is the navigation: ☰ opens
-// a layer with colours, categories (and stores) and sizes. Same data, palette matching and
-// unchecked stores as the shop (../).
+// a layer with saved products (♥), colours, categories (and stores) and sizes. Same data, palette matching and
+// unchecked stores as the grid (grid.html).
 // The product page opens in a new tab, from the photo or the "To the product page" link.
+// This is the start page: the Rust build (site/) pre-renders its first products into index.html,
+// and rebuild() takes them over (keeping their photos) once the feed has loaded.
 
-import { TAXONOMY, label } from '../lib/taxonomy.mjs';
-import { fabricLabel } from '../lib/normalize.mjs';
-import { PALETTES, FAMILIES, paletteById } from '../lib/palettes.mjs';
+import { TAXONOMY, label } from './lib/taxonomy.mjs';
+import { fabricLabel } from './lib/normalize.mjs';
+import { PALETTES, FAMILIES, paletteById } from './lib/palettes.mjs';
 import {
   loadSelection, saveSelection, isActive, targetColors, attachSwatches, matchingColorways, matchInfo,
   loadColorOverrides, colorName, EXCLUDABLE, passesExclude, voteKey, FEEDBACK_LINES_PER_ISSUE, sendVotes,
-} from '../palette-filter.js';
+} from './palette-filter.js';
 import {
-  esc, sek, store, catLabel, displayTitle, thumb, sizeLetter, shortSize, historyHtml, loadFeed, loadDetails,
-  loadHiddenStores, saveHiddenStores, approx, localPrice,
-} from '../shop-utils.js';
+  esc, sek, store, catLabel, displayTitle, thumb, srcset, sizeLetter, shortSize, historyHtml, loadFeed, loadDetails,
+  loadHiddenStores, saveHiddenStores, approx, localPrice, loadSaved, isSaved, toggleSaved,
+} from './shop-utils.js';
 
 const BATCH = 6; // slides added at a time, a few ahead of the one on screen
 const HIDDEN_DEPTS = TAXONOMY.filter((d) => d.hidden).map((d) => d.id);
@@ -26,6 +28,7 @@ const ICON = {
   left: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>',
   down: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>',
   out: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 16L17 7M9 7h8v8"/></svg>',
+  heart: '<svg class="heart" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20s-7.5-4.6-9.3-9.2C1.4 7.4 3.6 4 7 4c2.1 0 3.6 1.2 5 3 1.4-1.8 2.9-3 5-3 3.4 0 5.6 3.4 4.3 6.8C19.5 15.4 12 20 12 20z"/></svg>',
 };
 
 // ---------- Sizes ----------
@@ -78,6 +81,8 @@ let targets = targetColors(palette);
 let dirty = false; // filters changed while the navigation layer was open
 const votes = store.get('paletteVotes', {}); // 👍/👎 "in my palette?", shared with the shop
 const voteOf = (p) => votes[`${p.id} ${voteKey(palette)}`]?.v ?? 0;
+let savedList = loadSaved(); // ♥ products, shared with the shop
+const byId = new Map();
 
 // Shared links: ?cat=tops/t-shirts&for=men&size=M,US9.5,EU42 (palette params are handled by palette-filter.js).
 function readUrl() {
@@ -123,7 +128,9 @@ function computeMatches() {
 
 // A fresh order every day that stays put while you browse. With a palette: signature colours,
 // then neutrals, then products you rated 👎; closest matches first, mixed within each step.
-const DAY = new Date().toISOString().slice(0, 10);
+// The day is the build's (feed.json), so the order matches the pre-rendered first products.
+const TODAY = new Date().toISOString().slice(0, 10);
+let DAY = TODAY;
 const hash = (s) => { let h = 2166136261; for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619); return h >>> 0; };
 const group = (p) => (voteOf(p) < 0 ? 2 : p._pm?.kind === 'neutral' ? 1 : 0);
 
@@ -145,6 +152,7 @@ async function init() {
   try {
     const [data, overrides] = await Promise.all([loadFeed(), loadColorOverrides()]);
     all = attachSwatches(data.products.filter((p) => p.images.length), overrides);
+    DAY = data.day ?? TODAY;
     stores = [...new Map(all.map((p) => [p.store, { id: p.store, name: p.storeName }])).values()]
       .sort((a, b) => a.name.localeCompare(b.name, 'sv'));
   } catch (err) {
@@ -155,6 +163,7 @@ async function init() {
   for (const p of all) {
     p._sz = p.variants.map((v) => ({ ...sizeOf(v.size, p.gender), available: v.available }));
     p._rnd = hash(`${DAY} ${p.id}`);
+    byId.set(p.id, p);
   }
   computeMatches();
   apply();
@@ -184,12 +193,24 @@ const io = new IntersectionObserver((entries) => {
 let footer = ''; // the same navigation footer on every photo
 function rebuild() {
   io.disconnect();
+  // The build's pre-rendered first products: when they're the same products in the same order,
+  // their photos (already loaded) move into the new slides and you stay where you scrolled to.
+  const pre = [...feed.querySelectorAll('.slide[data-pre]')];
+  const same = pre.length > 0 && pre.every((s, i) => s.dataset.id === filtered[i]?.id);
+  const top = feed.scrollTop;
   rendered = 0;
   current = 0;
   footer = footerHtml();
   feed.innerHTML = filtered.length ? '' : emptyHtml();
   appendBatch();
-  feed.scrollTo({ top: 0 });
+  if (same) {
+    for (const [i, s] of pre.entries()) {
+      const img = $('.shot img', s);
+      $('.shot img', slideAt(i)).replaceWith(img);
+      fit(img);
+    }
+  }
+  feed.scrollTo({ top: same ? top : 0 });
 }
 
 function appendBatch() {
@@ -248,10 +269,11 @@ function slideHtml(p, i) {
     <div class="pager">
       <section class="pane media">
         <a class="shot" href="${esc(p.url)}" target="_blank" rel="noopener" draggable="false" title="To the product page at ${esc(p.storeName)}">
-          <img src="${esc(thumb(img, 1080))}" alt="${esc(title)}" draggable="false" ${i < 2 ? 'fetchpriority="high"' : 'loading="lazy"'}>
+          <img src="${esc(thumb(img, 1080))}" ${srcset(img) ? `srcset="${esc(srcset(img))}" sizes="(min-width: 900px) 57vw, 100vw"` : ''} alt="${esc(title)}" draggable="false" ${i < 2 ? 'fetchpriority="high"' : 'loading="lazy"'}>
         </a>
         <span class="pos" aria-hidden="true">${pos}</span>
         <button class="peek" data-action="details" aria-label="Product details">${ICON.left}</button>
+        ${saveBtnHtml(p, 'save')}
         ${hint ? '<span class="coach" aria-hidden="true">Drag the photo left for details</span>' : ''}
         <div class="caption">
           <p class="who"><span class="store-tag">${esc(p.storeName)}</span>${esc(p.brand)}</p>
@@ -276,13 +298,14 @@ function infoHtml(p, pos) {
     const text = `${esc(v.size ?? 'One size')}${p.colors.length > 1 && v.color ? ` · ${esc(v.color)}` : ''}`;
     const cls = `size ${isMine(p._sz[i]) ? 'mine' : ''}`;
     return canCart
-      ? `<button class="${cls}" data-variant="${esc(v.id)}" ${v.available ? '' : 'disabled'} aria-pressed="false">${text}</button>`
+      ? `<button class="${cls}" data-variant="${i}" ${v.available ? '' : 'disabled'} aria-pressed="false">${text}</button>`
       : `<span class="${cls} ${v.available ? '' : 'out'}">${text}</span>`;
   };
   return `
     <header class="info-top">
       <button class="back" data-action="photo">${ICON.left}Photo</button>
       <span class="pos">${pos}</span>
+      ${saveBtnHtml(p, 'save small')}
     </header>
     <p class="who"><span class="store-tag">${esc(p.storeName)}</span>${esc(p.brand)}</p>
     <h2 class="info-title">${esc(displayTitle(p))}</h2>
@@ -323,7 +346,13 @@ function infoHtml(p, pos) {
     <button class="next" data-action="next">Next product ${ICON.down}</button>`;
 }
 
-// The photo's footer: ☰ plus one pill per section, showing what's chosen.
+const saveBtnHtml = (p, cls) => {
+  const on = isSaved(savedList, p.id);
+  return `<button class="${cls}" data-save="${esc(p.id)}" aria-pressed="${on}" aria-label="${on ? 'Remove from' : 'Save to'} your saved products">${ICON.heart}</button>`;
+};
+const savedCountHtml = () => (savedList.length ? `<span class="count">${savedList.length}</span>` : '');
+
+// The photo's footer: ☰, ♥ (saved products), then one pill per section, showing what's chosen.
 function footerHtml() {
   const s = summary();
   const pill = (tab, text, on, extra = '') =>
@@ -331,7 +360,8 @@ function footerHtml() {
   const strip = s.season ? `<span class="strip">${s.season.colors.map((c) => `<i style="background:${esc(c.hex)}"></i>`).join('')}</span>` : '';
   return `
     <footer class="bar">
-      <button class="menu" data-sheet="" aria-label="Open navigation: colours, categories and sizes">${ICON.menu}</button>
+      <button class="menu" data-sheet="" aria-label="Open navigation: saved, colours, categories and sizes">${ICON.menu}</button>
+      <button class="saved-btn ${savedList.length ? 'on' : ''}" data-sheet="saved" aria-label="Saved products (${savedList.length})">${ICON.heart}${savedCountHtml()}</button>
       ${pill('colours', s.colours ?? 'Colours', !!s.colours, strip)}
       ${pill('categories', s.categories ?? 'Categories', !!s.categories)}
       ${pill('sizes', s.sizes ?? 'Sizes', !!s.sizes)}
@@ -375,7 +405,7 @@ function endHtml() {
       <p>You've seen all ${filtered.length} products for these filters.</p>
       <button class="btn primary" data-action="top">Back to the first</button>
       <button class="btn ghost" data-sheet="">Change filters</button>
-      <a class="classic" href="../">Classic grid view</a>
+      <a class="classic" href="grid.html">Classic grid view</a>
     </div>
   </article>`;
 }
@@ -417,23 +447,45 @@ function fetchDetails(i) {
   }, () => {}); // offline: tried again next time it's on screen
 }
 
+// ♥ on or off: every copy of the product's button, the footer counts and the Saved tab follow.
+function save(id) {
+  const p = byId.get(id) ?? savedList.find((x) => x.id === id);
+  if (!p) return;
+  savedList = toggleSaved(savedList, p);
+  const on = isSaved(savedList, id);
+  document.querySelectorAll(`[data-save="${CSS.escape(id)}"]`).forEach((b) => {
+    b.setAttribute('aria-pressed', on);
+    b.setAttribute('aria-label', `${on ? 'Remove from' : 'Save to'} your saved products`);
+  });
+  footer = footerHtml();
+  feed.querySelectorAll('.saved-btn').forEach((b) => {
+    b.classList.toggle('on', savedList.length > 0);
+    b.setAttribute('aria-label', `Saved products (${savedList.length})`);
+    b.innerHTML = ICON.heart + savedCountHtml();
+  });
+  if (sheet.open) renderSheet();
+}
+
 function vote(slide, btn) {
   const box = btn.closest('.vote');
   const key = `${box.dataset.id} ${voteKey(palette)}`;
   const v = Number(btn.dataset.vote);
   if (votes[key]?.v === v) delete votes[key];
-  else votes[key] = { v, at: DAY, sent: false };
+  else votes[key] = { v, at: TODAY, sent: false };
   store.set('paletteVotes', votes);
   // Not re-sorted now (the feed would jump); a 👎 product moves to the end next time.
   box.querySelectorAll('[data-vote]').forEach((b) => b.setAttribute('aria-pressed', votes[key]?.v === Number(b.dataset.vote)));
 }
 
-function pickSize(slide, btn) {
-  const i = Number(slide.dataset.i);
-  const p = filtered[i];
+// The variants' ids (for the cart link) come with the product's details file.
+async function pickSize(slide, btn) {
+  const p = filtered[Number(slide.dataset.i)];
   slide.querySelectorAll('.size[data-variant]').forEach((b) => b.setAttribute('aria-pressed', b === btn));
   const cart = $('.cart', slide);
-  cart.href = `${p.storeBase}/cart/${btn.dataset.variant}:1?storefront=true`;
+  try { await loadDetails(p); } catch { return; }
+  const id = p.variants[Number(btn.dataset.variant)]?.id;
+  if (!id || btn.getAttribute('aria-pressed') !== 'true') return;
+  cart.href = `${p.storeBase}/cart/${id}:1?storefront=true`;
   cart.innerHTML = `Add to cart at ${esc(p.storeName)} ${ICON.out}`;
   cart.removeAttribute('aria-disabled');
 }
@@ -443,10 +495,11 @@ function bindFeed() {
   feed.addEventListener('click', (e) => {
     if (suppressClick) { suppressClick = false; e.preventDefault(); e.stopPropagation(); return; }
     const slide = e.target.closest('.slide');
-    const t = e.target.closest('[data-action], [data-sheet], [data-vote], .size[data-variant], .cart[aria-disabled]');
+    const t = e.target.closest('[data-action], [data-sheet], [data-save], [data-vote], .size[data-variant], .cart[aria-disabled]');
     if (!t) return;
     if (t.matches('.cart')) return e.preventDefault();
     if (t.dataset.sheet != null) return openSheet(t.dataset.sheet || state.tab);
+    if (t.dataset.save) return save(t.dataset.save);
     if (t.dataset.vote) return vote(slide, t);
     if (t.dataset.variant) return pickSize(slide, t);
     const action = t.dataset.action;
@@ -517,6 +570,7 @@ function bindFeed() {
       case 'ArrowRight': case 'l': if (slide) showDetails(slide); break;
       case 'ArrowLeft': case 'h': case 'Escape': if (slide) showPhoto(slide); break;
       case 'm': openSheet(state.tab); break;
+      case 's': if (filtered[current]) save(filtered[current].id); break;
       default: return;
     }
     e.preventDefault();
@@ -538,6 +592,9 @@ function bindSheet() {
     if (!t) return;
     const d = t.dataset;
     if (d.tab) { state.tab = d.tab; saveFilters(); renderSheet(); $('.sheet-body', sheet).scrollTop = 0; return; }
+    if (d.save) return save(d.save);
+    if (d.goto) { const i = filtered.findIndex((p) => p.id === d.goto); sheet.close(); return goTo(i); }
+    if (t.id === 'saved-clear') { if (confirm(`Remove all ${savedList.length} saved products?`)) [...savedList].forEach((x) => save(x.id)); return; }
     if (d.season) {
       const ids = palette.palettes;
       return setPalette({ palettes: ids.includes(d.season) ? ids.filter((x) => x !== d.season) : [...ids, d.season] });
@@ -633,9 +690,50 @@ function renderSheet() {
   const top = body.scrollTop;
   sheet.querySelectorAll('[data-tab]').forEach((b) => b.setAttribute('aria-selected', b.dataset.tab === state.tab));
   body.setAttribute('aria-labelledby', `tab-${state.tab}`);
-  body.innerHTML = { colours: coloursHtml, categories: categoriesHtml, sizes: sizesHtml }[state.tab]();
+  body.innerHTML = ({ saved: savedHtml, colours: coloursHtml, categories: categoriesHtml, sizes: sizesHtml }[state.tab] ?? coloursHtml)();
   body.scrollTop = top;
+  $('#clear-all').hidden = state.tab === 'saved'; // it clears filters, not the saved list
   $('#show').textContent = filtered.length ? `Show ${filtered.length.toLocaleString('sv-SE')} products` : 'No products match';
+}
+
+// Saved products, newest first. Live data when the product is still in the feed, otherwise the
+// snapshot taken when it was saved.
+function savedHtml() {
+  if (!savedList.length) return `
+    <section class="group empty-saved">
+      <p class="big-heart">${ICON.heart}</p>
+      <h3>No saved products yet</h3>
+      <p class="hint">Tap ♥ on a product to save it here. The list is kept in this browser for 30 days after your last visit, no account needed.</p>
+    </section>`;
+  const row = (x) => {
+    const p = byId.get(x.id);
+    const i = p ? filtered.indexOf(p) : -1;
+    const status = !p ? 'No longer listed' : !p.available ? 'Sold out' : '';
+    const price = p ? `${approx(p)}${sek(p.price)}${p.compareAt ? ` <s>${sek(p.compareAt)}</s>` : ''}` : sek(x.price);
+    return `<li class="saved-row ${status ? 'gone' : ''}">
+      <a class="saved-link" href="${esc(p?.url ?? x.url)}" target="_blank" rel="noopener" title="To the product page at ${esc(p?.storeName ?? x.storeName)}">
+        <img src="${esc(thumb(p?.images[0] ?? x.image, 200))}" alt="" loading="lazy">
+        <span class="saved-text">
+          <span class="who"><span class="store-tag">${esc(p?.storeName ?? x.storeName)}</span>${esc(p?.brand ?? x.brand)}</span>
+          <span class="saved-title">${esc(p ? displayTitle(p) : x.title)}</span>
+          <span class="saved-price ${p?.compareAt ? 'sale' : ''}">${price}${status ? ` · <em>${status}</em>` : ''}</span>
+        </span>
+      </a>
+      <span class="saved-actions">
+        ${i >= 0 ? `<button class="link" data-goto="${esc(x.id)}">In the feed</button>` : ''}
+        <button class="save small" data-save="${esc(x.id)}" aria-pressed="true" aria-label="Remove from your saved products">${ICON.heart}</button>
+      </span>
+    </li>`;
+  };
+  return `
+    <section class="group">
+      <div class="group-head">
+        <h3>Saved · ${savedList.length}</h3>
+        <button id="saved-clear" class="link">Remove all</button>
+      </div>
+      <ul class="saved-list">${savedList.map(row).join('')}</ul>
+      <p class="hint">Kept in this browser on this device for 30 days after your last visit.</p>
+    </section>`;
 }
 
 function coloursHtml() {
@@ -674,7 +772,7 @@ function coloursHtml() {
       <p>Your ratings: ${up} 👍 · ${list.length - up} 👎</p>
       ${unsent ? `<button id="send-votes" class="link">Send ${Math.min(unsent, FEEDBACK_LINES_PER_ISSUE)} to improve matching ↗</button>` : '<p class="muted">All sent, thanks!</p>'}
     </section>` : ''}
-    <a class="classic" href="../palettes.html">Every season's colours ↗</a>`;
+    <a class="classic" href="palettes.html">Every season's colours ↗</a>`;
 }
 
 function categoriesHtml() {

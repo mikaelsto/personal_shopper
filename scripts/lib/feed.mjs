@@ -1,13 +1,28 @@
-// Slim data for the site, built from data/products.json at deploy time (scripts/build-site.mjs)
-// and on the fly by the local preview (scripts/serve.mjs):
+// Slim product data for the site. The Rust build (site/src/feed.rs) writes it from
+// data/products.json; this module is the browser's side: it decodes the feed and finds a
+// product's details file.
 //
 //   feed.json                 every product, with what cards, slides and filters need
 //   feed/<store>/<id>.json    one product's details (description, materials, all photos, price
-//                             history), fetched only for the products you open or look at
+//                             history, cart variant ids), fetched only for the products you open
+//                             or look at
 //   feed-search.json          words from each product's description, store category and materials,
 //                             fetched the first time you search
 //
-// Pure ES module: also loaded by the browser to decode the feed and find a product's details.
+// feed.json is compact: { v: 2, generatedAt, day, stores, words, products }.
+//   stores    [{ id, name, base, cart, url, img }]: url and img are prefixes that the store's
+//             product links and photos start with (stored without them)
+//   words     shared strings (brands, categories, sizes, colours, dates…); words[0] is null
+//   products  one row each, in the order of ROW below; trailing empty fields are left out
+//   day       the build's date: the feed's daily order (and the pre-rendered first products)
+//
+// Pure ES module: no DOM, so the browser and Node scripts can both load it.
+
+export const ROW = [
+  'id', 'store', 'title', 'url', 'image', 'price', 'available', 'brand', 'brandKey', 'category', 'subcategory',
+  'gender', 'firstSeen', 'colors', 'sizes', 'stock', 'variantColors', 'features', 'fabrics', 'compareAt', 'local',
+  'photoColor', 'brandLine',
+];
 
 // "kayo:16844" -> "feed/kayo/16844.json" (ids are "<store>:<store's own id>").
 export function detailsPath(id) {
@@ -15,62 +30,35 @@ export function detailsPath(id) {
   return `feed/${store}/${rest.join(':').replace(/[^\w-]/g, '_')}.json`;
 }
 
-// Each distinct word once, lower case, punctuation trimmed ("t-shirt" and "100%" stay whole).
-const searchWords = (text) => [...new Set(text.toLowerCase().split(/\s+/)
-  .map((w) => w.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}%]+$/gu, '')).filter((w) => w.length > 1))].join(' ');
+const withPrefix = (prefix, s) => (!s || /^https?:/.test(s) ? s : prefix + s);
 
-// -> { feed, details: [[path, details], …], search: { productId: words } }
-export function buildFeed(products, history = {}, generatedAt = new Date().toISOString()) {
-  const stores = {};
-  const details = [];
-  const search = {};
-  const items = products.map((p) => {
-    stores[p.store] ??= { name: p.storeName, base: p.storeBase, cart: p.cart ?? null };
-    details.push([detailsPath(p.id), {
-      id: p.id,
-      description: p.description || undefined,
-      materials: p.materials?.length ? p.materials : undefined,
-      images: p.images.length > 1 ? p.images.slice(1) : undefined,
-      history: history[p.id],
-      lastSeen: p.lastSeen ?? p.collectedAt,
-    }]);
-    search[p.id] = searchWords(`${p.productType ?? ''} ${(p.materials ?? []).join(' ')} ${p.description ?? ''}`);
-    const multiColour = p.colors.length > 1;
-    const cart = p.cart === 'shopify';
-    return {
-      id: p.id, store: p.store, title: p.title, brand: p.brand, brandKey: p.brandKey, brandLine: p.brandLine ?? undefined, url: p.url,
-      category: p.category, subcategory: p.subcategory, gender: p.gender,
-      features: p.features?.length ? p.features : undefined,
-      fabrics: p.fabrics?.length ? p.fabrics : undefined,
-      price: p.price, compareAt: p.compareAt ?? undefined, available: p.available,
-      local: p.local ? { currency: p.local.currency, price: p.local.price } : undefined, // converted from this
-      colors: p.colors, image: p.images[0],
-      // [size, in stock, colour (only when there are several), variant id (only for cart links)]
-      variants: p.variants.map((v) => {
-        const row = [v.size ?? null, v.available ? 1 : 0];
-        if (multiColour || cart) row.push(multiColour ? v.color ?? null : null);
-        if (cart) row.push(v.id);
-        return row;
-      }),
-      photoColor: p.photoColor?.main ? { main: p.photoColor.main, name: p.photoColor.name } : undefined,
-      firstSeen: p.firstSeen,
-    };
-  });
-  return { feed: { generatedAt, stores, products: items }, details, search };
-}
-
-// feed.json product -> the product shape the site uses (as in products.json). Until its details
-// file is merged in (p.details = true), description and materials are empty and images has one photo.
-export function decodeProduct(p, stores) {
-  const s = stores[p.store] ?? {};
-  const variants = p.variants.map(([size, available, color, id]) =>
-    ({ size, available: !!available, color: p.colors.length > 1 ? color ?? null : p.colors[0] ?? null, id }));
+// One feed.json row -> the product shape the site uses (as in products.json). Until its details
+// file is merged in (p.details = true), description and materials are empty, images has one
+// photo and variants have no ids.
+export function decodeProduct(row, feed) {
+  const [id, si, title, url, image, price, available, brand, brandKey, category, subcategory, gender, firstSeen,
+    colors = [], sizes = [], stock = '', variantColors = 0, features = 0, fabrics = 0, compareAt = 0, local = 0,
+    photoColor = 0, brandLine = 0] = row;
+  const s = feed.stores[si];
+  const w = (i) => feed.words[i] ?? null;
+  const colorNames = colors.map(w);
+  const variants = sizes.map((size, i) => ({
+    size: w(size),
+    available: stock[i] === '1',
+    color: colorNames.length > 1 ? (variantColors ? w(variantColors[i]) : null) : colorNames[0] ?? null,
+  }));
   return {
-    ...p,
-    storeName: s.name, storeBase: s.base, cart: s.cart,
-    features: p.features ?? [], fabrics: p.fabrics ?? [], compareAt: p.compareAt ?? null,
-    images: p.image ? [p.image] : [], description: '', materials: [],
+    id: `${s.id}:${id}`, store: s.id, storeName: s.name, storeBase: s.base, cart: s.cart,
+    title, url: withPrefix(s.url, url), brand: w(brand), brandKey: w(brandKey), brandLine: w(brandLine),
+    category: w(category), subcategory: w(subcategory), gender: w(gender),
+    features: features ? features.map(w) : [], fabrics: fabrics ? fabrics.map(w) : [],
+    price, compareAt: compareAt || null, available: available === 1,
+    local: local ? { currency: w(local[0]), price: local[1] } : undefined,
+    colors: colorNames,
+    images: image ? [withPrefix(s.img, image)] : [], description: '', materials: [],
     variants,
     sizesInStock: [...new Set(variants.filter((v) => v.available && v.size).map((v) => v.size))],
+    photoColor: photoColor ? { main: photoColor[0], name: w(photoColor[1]) } : undefined,
+    firstSeen: w(firstSeen),
   };
 }

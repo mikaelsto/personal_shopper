@@ -136,8 +136,9 @@ function update() {
   const active = isActive(sel);
   $('#pal-clear').hidden = !active;
   const q = selectionParams(sel);
-  $('#pal-go').href = `index.html${q.size ? `?${q}` : ''}`;
-  $('#nav-shop').href = $('#pal-go').href;
+  $('#pal-go').href = `./${q.size ? `?${q}` : ''}`; // the feed
+  $('#nav-feed').href = $('#pal-go').href;
+  $('#nav-shop').href = `grid.html${q.size ? `?${q}` : ''}`;
 
   if (products) {
     for (const el of document.querySelectorAll('[data-count]')) {

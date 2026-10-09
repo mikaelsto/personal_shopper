@@ -7,7 +7,8 @@
   },
   "scripts": {
     "update": "node scripts/update.mjs",
-    "build": "node scripts/build-site.mjs",
+    "build": "cargo run --release --manifest-path site/Cargo.toml",
+    "test:site": "cargo test --release --manifest-path site/Cargo.toml",
     "dev": "node scripts/serve.mjs",
     "taxonomy": "node scripts/taxonomy-doc.mjs"
   },

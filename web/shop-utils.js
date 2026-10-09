@@ -1,4 +1,4 @@
-// Helpers shared by the shop (app.js), the palette page (palettes.js) and the feed (social/social.js).
+// Helpers shared by the feed (feed.js, the start page), the grid (app.js) and the palette page (palettes.js).
 
 import { label } from './lib/taxonomy.mjs';
 import { decodeProduct, detailsPath } from './lib/feed.mjs';
@@ -27,12 +27,16 @@ export const catLabel = (p) => (p.subcategory && p.subcategory !== 'other' ? `${
 export const displayTitle = (p) => (p.colors.length === 1 ? `${p.title} – ${p.colors[0]}` : p.title);
 
 // Use smaller image variants where the store's image server offers them.
+const isShopify = (url) => url?.includes('cdn.shopify.com');
 export const thumb = (url, w = 500) => {
   if (!url) return url;
-  if (url.includes('cdn.shopify.com')) return `${url}${url.includes('?') ? '&' : '?'}width=${w}`;
+  if (isShopify(url)) return `${url}${url.includes('?') ? '&' : '?'}width=${w}`;
   if (url.includes('images.ka-yo.com/product/1000f1239/') && w <= 500) return url.replace('/1000f1239/', '/300f371/');
   return url;
 };
+
+// A srcset for full-screen photos, so phones load the width their screen needs (Shopify only).
+export const srcset = (url) => (isShopify(url) ? [540, 828, 1080, 1440].map((w) => `${thumb(url, w)} ${w}w`).join(', ') : '');
 
 // Normalise size labels like "Size 1 (S)" or "Medium" to S/M/L…
 export function sizeLetter(s) {
@@ -57,29 +61,35 @@ export function historyHtml(h) {
 }
 
 // ---------- Product data (see scripts/lib/feed.mjs) ----------
-// Paths resolve from this module, so pages in subfolders (social/) find the data too.
+// Paths resolve from this module, so pages in subfolders find the data too.
 const dataUrl = (path) => new URL(`data/${path}`, import.meta.url);
+// The build stamps its version into the page; feed.json is fetched with it, so the request
+// matches the page's preload and a new deploy never gets yesterday's cached feed.
+const build = globalThis.document?.querySelector('meta[name="build"]')?.content;
 let feedVersion = ''; // feed.json's generatedAt: keeps details files from the same build
 
-// -> { generatedAt, products } with every product in the shape of products.json, minus details.
+// -> { generatedAt, day, products } with every product in the shape of products.json, minus details.
 export async function loadFeed() {
-  const feed = await fetch(dataUrl('feed.json')).then((r) => r.json());
+  const feed = await fetch(dataUrl(`feed.json${build ? `?v=${build}` : ''}`)).then((r) => r.json());
   feedVersion = feed.generatedAt;
-  return { generatedAt: feed.generatedAt, products: feed.products.map((p) => decodeProduct(p, feed.stores)) };
+  return { generatedAt: feed.generatedAt, day: feed.day, products: feed.products.map((row) => decodeProduct(row, feed)) };
 }
 
-// Merges a product's description, materials, all photos and price history (p.history) into it,
-// fetched once. Products that already have them (p.details, e.g. loaded live from Shopify) resolve as is.
+// Merges a product's description, materials, all photos, price history (p.history) and the
+// variants' ids (for cart links) into it, fetched once. Products that already have them (p.details, e.g. loaded live from Shopify) resolve as is.
 const pendingDetails = new Map();
 export function loadDetails(p) {
   if (p.details) return Promise.resolve(p);
   if (!pendingDetails.has(p.id)) {
     pendingDetails.set(p.id, fetch(dataUrl(`${detailsPath(p.id)}?v=${encodeURIComponent(feedVersion)}`))
       .then((r) => (r.ok ? r.json() : {}))
-      .then((d) => Object.assign(p, {
-        description: d.description ?? '', materials: d.materials ?? [], images: [...p.images.slice(0, 1), ...(d.images ?? [])],
-        history: d.history ?? [], lastSeen: d.lastSeen, details: true,
-      }))
+      .then((d) => {
+        d.variantIds?.forEach((id, i) => { if (p.variants[i]) p.variants[i].id = id; });
+        return Object.assign(p, {
+          description: d.description ?? '', materials: d.materials ?? [], images: [...p.images.slice(0, 1), ...(d.images ?? [])],
+          history: d.history ?? [], lastSeen: d.lastSeen, details: true,
+        });
+      })
       .finally(() => pendingDetails.delete(p.id))); // offline: tried again next time
   }
   return pendingDetails.get(p.id);
@@ -89,3 +99,24 @@ export function loadDetails(p) {
 let searchWords = null;
 export const loadSearchWords = () => (searchWords ??= fetch(dataUrl(`feed-search.json?v=${encodeURIComponent(feedVersion)}`))
   .then((r) => r.json()).catch(() => { searchWords = null; return {}; }));
+
+// ---------- Saved products (♥) ----------
+// No login, so the list lives in this browser's localStorage, as a session that lasts 30 days
+// from your last visit (each visit or change starts the 30 days again). Each entry keeps a small
+// snapshot, so a product that later leaves the feed can still be shown (and opened at the store).
+const SAVED_DAYS = 30;
+const renewSaved = () => store.set('savedUntil', Date.now() + SAVED_DAYS * 864e5);
+export function loadSaved() { // [{ id, at, title, brand, storeName, price, image, url }], newest first
+  if (Date.now() > store.get('savedUntil', Infinity)) store.set('savedProducts', []);
+  renewSaved();
+  return store.get('savedProducts', []);
+}
+export const isSaved = (list, id) => list.some((x) => x.id === id);
+export function toggleSaved(list, p) {
+  const next = isSaved(list, p.id)
+    ? list.filter((x) => x.id !== p.id)
+    : [{ id: p.id, at: new Date().toISOString().slice(0, 10), title: displayTitle(p), brand: p.brand, storeName: p.storeName, price: p.price, image: p.images[0], url: p.url }, ...list];
+  store.set('savedProducts', next);
+  renewSaved();
+  return next;
+}

@@ -1,4 +1,4 @@
-// Personal Shopper front-end. Reads data/feed.json (a slim products.json, see scripts/lib/feed.mjs)
+// Runnista grid (grid.html). Reads data/feed.json (a slim products.json, see scripts/lib/feed.mjs)
 // + data/stores.json, built by the GitHub job. Details and search words load when needed.
 // Newly added Shopify stores are also fetched live in the browser until the job has added them.
 
@@ -545,7 +545,7 @@ async function openDetail(id) {
         <div>${p.features.map((f) => `<span class="tag">${esc(f)}</span>`).join('')}${(p.fabrics ?? []).map((f) => `<span class="tag">${esc(fabricLabel(f))}</span>`).join('')}<span class="tag">${esc(catLabel(p))}</span>${p.gender !== 'unisex' ? `<span class="tag">${p.gender}</span>` : ''}</div>
         ${p.colors.length ? `<h3>Colour</h3><div>${swatchesHtml(p) || esc(p.colors.join(', '))}${p._swatches.length ? `<div class="muted">${esc(p.colors.join(', '))}</div>` : ''}</div>` : ''}
         <h3>Size</h3>
-        <div class="sizes">${p.variants.map((v) => `<button class="size" data-variant="${esc(v.id)}" ${v.available ? '' : 'disabled'} aria-pressed="false">${esc(v.size ?? 'One size')}${p.colors.length > 1 && v.color ? ` · ${esc(v.color)}` : ''}</button>`).join('')}</div>
+        <div class="sizes">${p.variants.map((v, i) => `<button class="size" data-variant="${i}" ${v.available ? '' : 'disabled'} aria-pressed="false">${esc(v.size ?? 'One size')}${p.colors.length > 1 && v.color ? ` · ${esc(v.color)}` : ''}</button>`).join('')}</div>
         <div class="actions">
           ${canCart ? `<a id="add-cart" class="btn" target="_blank" rel="noopener" aria-disabled="true">Select a size</a>` : ''}
           <a class="btn ${canCart ? 'ghost' : ''}" href="${esc(p.url)}" target="_blank" rel="noopener">View at ${esc(p.storeName)} ↗</a>
@@ -571,13 +571,15 @@ async function openDetail(id) {
     d.querySelectorAll('.thumbs img').forEach((i) => i.classList.toggle('on', i === img));
     d.querySelector('#main-img').src = thumb(img.dataset.src, 1000);
   });
-  d.querySelector('.sizes').addEventListener('click', (e) => {
+  d.querySelector('.sizes').addEventListener('click', async (e) => {
     const b = e.target.closest('.size:not([disabled])');
     if (!b) return;
-    selected = b.dataset.variant;
     d.querySelectorAll('.size').forEach((x) => x.setAttribute('aria-pressed', x === b));
+    try { await loadDetails(p); } catch { return; } // the variants' ids come with the details file
+    if (b.getAttribute('aria-pressed') !== 'true') return;
+    selected = p.variants[Number(b.dataset.variant)]?.id;
     const cart = d.querySelector('#add-cart');
-    if (cart) {
+    if (cart && selected) {
       cart.href = `${p.storeBase}/cart/${selected}:1?storefront=true`;
       cart.textContent = `Add to cart at ${p.storeName} ↗`;
       cart.removeAttribute('aria-disabled');
@@ -660,7 +662,7 @@ async function addStore(rawUrl, name) {
 
   const issue = `https://github.com/${REPO}/issues/new?` + new URLSearchParams({
     title: `Add store: ${url.href}`,
-    body: `name: ${displayName}\n\nOpened from Personal Shopper. The "Add store" workflow detects how to read this store, adds it to data/stores.json and refreshes the site.`,
+    body: `name: ${displayName}\n\nOpened from Runnista. The "Add store" workflow detects how to read this store, adds it to data/stores.json and refreshes the site.`,
   });
   out.innerHTML = `
     ${isShopify

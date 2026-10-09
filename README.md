@@ -1,10 +1,12 @@
-# Personal Shopper
+# Runnista
 
 One place to browse running and fashion apparel from several stores. It has a shared category taxonomy, filters, side-by-side compare, price history, "find it elsewhere" links and per-store cart links.
 
 **Site:** https://mikaelsto.github.io/personal_shopper/
 
-**Feed:** https://mikaelsto.github.io/personal_shopper/social/ is a mobile-first, Reels-style version. You see one product per screen and swipe up for the next. Drag the photo left for its details. ☰ in the photo's footer opens colours, categories and sizes. The product page opens in a new tab, from the photo or from "To the product page".
+The start page is the **feed**: mobile-first and Reels-style. You see one product per screen and swipe up for the next. Drag the photo left for its details. ☰ in the photo's footer opens saved products, colours, categories and sizes. The product page opens in a new tab, from the photo or from "To the product page". On a phone you can add it to the home screen, and it opens full screen like an app. The icon is `web/icon.svg`; after changing it, regenerate the PNGs (`icon-180.png` for iPhone, `icon-192.png` and `icon-512.png` for Android) with `swift scripts/render-icon.swift web/icon.svg web 180 192 512` on a Mac.
+
+The classic **grid** (filters, search, compare, add a store) is at [`grid.html`](https://mikaelsto.github.io/personal_shopper/grid.html). Old `/social/` links redirect to the start page and keep their filters.
 
 ## Stores
 
@@ -71,8 +73,14 @@ Every store category is mapped onto one master tree (department › subcategory)
   If a store fails, its previous data is kept.
 - `.github/workflows/update.yml` runs this **daily**, then commits the data and deploys to GitHub Pages.
   - **Manual update:** Actions → "Update products & deploy site" → Run workflow. You can optionally limit it to some stores, e.g. `kayo`.
-- `web/` is the static site, with no build step.
-- The site loads a slim `feed.json`: about 320 KB gzipped instead of the 1.8 MB `products.json`. Each product's description, photos and price history sit in their own small file (`feed/<store>/<id>.json`), fetched when you open the product (or it's on screen in the feed). Search words from the descriptions (`feed-search.json`) load the first time you search. All of it is generated from `products.json` by `scripts/build-site.mjs` at deploy, and on the fly by `npm run dev` (`scripts/lib/feed.mjs`).
+- `web/` is the static site: plain HTML, CSS and JavaScript modules.
+- `site/` is the **Rust build** that turns `web/` and `data/` into the deployed site (`_site/`) in about 2 seconds:
+  - **Compact feed.** `feed.json` is about 3.3 MB (615 KB gzipped), down from 9.5 MB (876 KB gzipped) as plain JSON. Each product is one row. Brands, categories, sizes, colours and dates are shared through one word table. Links and photos are stored without the prefix they share within a store. `scripts/lib/feed.mjs` decodes it in the browser.
+  - **Details on demand.** Each product's description, photos, price history and cart variant ids sit in their own small file (`feed/<store>/<id>.json`). It's fetched when the product is on screen or opened. Search words (`feed-search.json`) load the first time you search.
+  - **Pre-rendered start page.** The first three products of the day's feed are written into `index.html`, so a phone shows a product before any script or data has loaded. When the feed arrives, the page takes them over and keeps their photos. If you have your own filters, they're hidden and you see the spinner instead.
+  - **Fewer round trips.** The feed's CSS is inline. Every script the page imports, nested ones included, is preloaded. `feed.json` and the photo hosts are fetched early. Phones load photos at the width their screen needs (`srcset`).
+  - **Cache-busting.** Every local CSS/JS reference gets `?v=<commit>`.
+- `scripts/lib/` holds the taxonomy and Shopify mapping, shared by the update job and the site.
 - `scripts/lib/` holds the taxonomy and Shopify mapping, shared by the update job and the site.
 
 ## Run locally
@@ -80,8 +88,10 @@ Every store category is mapped onto one master tree (department › subcategory)
 ```bash
 npm install
 npm run update     # fetch products
-npm run dev        # http://localhost:8080
+npm run dev        # http://localhost:8080, live from web/ (the feed data comes from the Rust build)
+npm run build      # the deployed site in _site/ (Rust)
+npm run test:site  # the Rust build's tests
 npm run taxonomy   # regenerate TAXONOMY.md
 ```
 
-Requires Node 22+.
+Requires Node 22+ and Rust (install with [rustup](https://rustup.rs)). `npm run dev` serves `web/` as is, so the start page shows a spinner instead of pre-rendered products. To see exactly what's deployed, run `npm run build` and serve `_site/`, e.g. `python3 -m http.server 8090 --directory _site`.

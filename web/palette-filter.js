@@ -1,4 +1,4 @@
-// Palette selection (URL + localStorage) shared by the shop (index.html) and the palette picker (palettes.html).
+// Palette selection (URL + localStorage) shared by the feed (index.html), the grid (grid.html) and the palette picker (palettes.html).
 // A selection is { palettes: [id], colors: ['#hex'], neutrals: bool, match: 'close'|'broad', exclude: [id] },
 // kept in the URL (?palette=…&color=…&exclude=black,white) so it can be shared, and in localStorage so it's remembered.
 
@@ -48,7 +48,7 @@ export function saveSelection(sel) {
   history.replaceState(null, '', `${location.pathname}${q.size ? `?${q}` : ''}${location.hash}`);
 }
 
-// Resolved from this module, so pages in subfolders (social/) find the data too.
+// Resolved from this module, so pages in subfolders find the data too.
 export const loadColorOverrides = () => fetch(new URL('data/color-names.json', import.meta.url)).then((r) => (r.ok ? r.json() : {})).catch(() => ({}));
 
 // 👍/👎 "is this in my palette?" votes are keyed "<productId> <voteKey>". Votes are about
@@ -64,7 +64,7 @@ export function sendVotes(votes) {
   const lines = unsent.map(([key, x]) => `${x.v > 0 ? '+' : '-'} ${key}`);
   const url = `https://github.com/${REPO}/issues/new?` + new URLSearchParams({
     title: `Palette feedback: ${unsent.length} votes`,
-    body: `Votes from Personal Shopper ("is this product in my palette?"). Submit the issue; a workflow saves them as labels.\n\n\`\`\`\n${lines.join('\n')}\n\`\`\``,
+    body: `Votes from Runnista ("is this product in my palette?"). Submit the issue; a workflow saves them as labels.\n\n\`\`\`\n${lines.join('\n')}\n\`\`\``,
   });
   for (const [key] of unsent) votes[key].sent = true;
   store.set('paletteVotes', votes);

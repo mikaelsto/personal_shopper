@@ -2,120 +2,67 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Personal Shopper</title>
-  <link rel="stylesheet" href="styles.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#000000">
+  <meta name="description" content="Running and fashion apparel from many stores, one product per screen.">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Runnista">
+  <title>Runnista</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icon-180.png">
+  <!-- The Rust build (site/) puts this stylesheet inline and adds preloads for the scripts and feed.json. -->
+  <link rel="stylesheet" href="feed.css" data-inline>
+  <script>
+    // The build pre-renders the first products of the default feed (no filters) into #feed, so
+    // they show before any script or data has loaded. With your own filters (in the link or saved
+    // in this browser) they'd be the wrong products: hide them and show the spinner instead.
+    (() => {
+      const get = (k) => { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } };
+      const q = new URLSearchParams(location.search);
+      const f = get('feedFilters') ?? {}, pal = get('paletteSelection') ?? {};
+      const custom = ['cat', 'for', 'size', 'palette', 'color', 'exclude'].some((k) => q.get(k))
+        || f.category || f.gender || Object.values(f.sizes ?? {}).some((s) => s.length)
+        || pal.palettes?.length || pal.colors?.length || pal.exclude?.length || get('hiddenStores')?.length;
+      if (custom) document.documentElement.classList.add('custom');
+    })();
+  </script>
 </head>
 <body>
-  <header class="top">
-    <div class="brand">
-      <h1>Personal Shopper</h1>
-      <span id="meta" class="muted"></span>
-    </div>
-    <input id="q" type="search" placeholder="Search products, fabrics, brands…" autocomplete="off">
-    <nav class="nav">
-      <a href="social/">📱 Feed</a>
-      <a href="palettes.html" id="nav-palette">🎨 Shop by palette</a>
-    </nav>
-  </header>
+  <!-- One product per screen: swipe up for the next, drag the photo left for its details. -->
+  <main id="feed" class="feed" aria-label="Products"><!--prerender--></main>
 
-  <div class="layout">
-    <aside class="filters" id="filters">
-      <section>
-        <div class="section-head">
-          <h3>Stores</h3>
-          <span><button id="stores-all" class="link">All</button> · <button id="stores-none" class="link">None</button></span>
-        </div>
-        <div id="f-stores" class="chips"></div>
-      </section>
-      <section class="pal-filter">
-        <div class="pal-filter-head">
-          <h3>Colour palette</h3>
-          <a href="palettes.html" id="pal-advanced">Advanced mode →</a>
-        </div>
-        <div id="f-palette"></div>
-      </section>
-      <section>
-        <h3>Exclude colours</h3>
-        <div id="f-exclude" class="chips"></div>
-      </section>
-      <section>
-        <h3>Category</h3>
-        <select id="f-category"></select>
-      </section>
-      <section>
-        <h3>Brand</h3>
-        <input id="f-brand-q" class="brand-search" type="search" placeholder="Search brands…" autocomplete="off">
-        <div id="f-brands" class="chips"></div>
-        <button id="f-brands-more" class="link" hidden></button>
-      </section>
-      <section>
-        <h3>Material</h3>
-        <div id="f-fabrics" class="chips"></div>
-      </section>
-      <section>
-        <h3>Function</h3>
-        <div id="f-features" class="chips"></div>
-      </section>
-      <section>
-        <h3>Gender</h3>
-        <select id="f-gender">
-          <option value="">Any</option>
-          <option value="men">Men + unisex</option>
-          <option value="women">Women + unisex</option>
-        </select>
-      </section>
-      <section>
-        <h3>My size</h3>
-        <select id="f-size">
-          <option value="">Any</option>
-          <option>XXS</option><option>XS</option><option>S</option><option>M</option>
-          <option>L</option><option>XL</option><option>XXL</option>
-        </select>
-      </section>
-      <section>
-        <h3>Price (SEK)</h3>
-        <div class="row">
-          <input id="f-min" type="number" inputmode="numeric" placeholder="min">
-          <input id="f-max" type="number" inputmode="numeric" placeholder="max">
-        </div>
-      </section>
-      <section>
-        <label class="check"><input type="checkbox" id="f-stock" checked> In stock only</label>
-        <label class="check"><input type="checkbox" id="f-sale"> On sale</label>
-      </section>
-      <button id="reset" class="link">Reset filters</button>
-    </aside>
+  <div id="loading" class="loading" role="status">
+    <span class="spinner" aria-hidden="true"></span>
+    <span>Loading products…</span>
+  </div>
 
-    <main>
-      <div class="toolbar">
-        <span id="count" class="muted"></span>
-        <div class="toolbar-right">
-          <button id="toggle-filters" class="btn ghost only-mobile">Filters</button>
-          <select id="sort">
-            <option value="relevance">Sort: relevance</option>
-            <option value="price-asc">Price: low → high</option>
-            <option value="price-desc">Price: high → low</option>
-            <option value="discount">Biggest discount</option>
-            <option value="newest">Newest first</option>
-          </select>
-        </div>
+  <!-- Navigation layer, opened from ☰ in the photo's footer -->
+  <dialog id="sheet" class="sheet" aria-labelledby="sheet-title">
+    <div class="sheet-grab" aria-hidden="true"><i></i></div>
+    <header class="sheet-head">
+      <h2 id="sheet-title" class="sr-only">Navigation</h2>
+      <div class="tabs" role="tablist" aria-label="Navigation">
+        <button role="tab" id="tab-saved" data-tab="saved" aria-controls="sheet-body" aria-label="Saved products">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20s-7.5-4.6-9.3-9.2C1.4 7.4 3.6 4 7 4c2.1 0 3.6 1.2 5 3 1.4-1.8 2.9-3 5-3 3.4 0 5.6 3.4 4.3 6.8C19.5 15.4 12 20 12 20z"/></svg>
+        </button>
+        <button role="tab" id="tab-colours" data-tab="colours" aria-controls="sheet-body">Colours</button>
+        <button role="tab" id="tab-categories" data-tab="categories" aria-controls="sheet-body">Categories</button>
+        <button role="tab" id="tab-sizes" data-tab="sizes" aria-controls="sheet-body">Sizes</button>
       </div>
-      <div id="grid" class="grid"></div>
-      <div class="more"><button id="more" class="btn ghost">Show more</button></div>
-    </main>
-  </div>
+      <button class="icon-btn" data-close aria-label="Close">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+    </header>
+    <div id="sheet-body" class="sheet-body" role="tabpanel"></div>
+    <footer class="sheet-foot">
+      <button id="clear-all" class="btn ghost">Clear all</button>
+      <button id="show" class="btn primary" data-close>Show products</button>
+    </footer>
+  </dialog>
 
-  <div id="compare-bar" class="compare-bar" hidden>
-    <span id="compare-count"></span>
-    <button id="compare-open" class="btn">Compare</button>
-    <button id="compare-clear" class="link">Clear</button>
-  </div>
-
-  <dialog id="detail"></dialog>
-  <dialog id="compare" class="wide"></dialog>
-  <dialog id="add-store" class="narrow"></dialog>
-
-  <script type="module" src="app.js"></script>
+  <script type="module" src="feed.js"></script>
 </body>
 </html>

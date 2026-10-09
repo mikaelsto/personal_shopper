@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Runnista</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icon-180.png">
+</head>
+<body>
+  <header class="top">
+    <div class="brand">
+      <h1>Runnista</h1>
+      <span id="meta" class="muted"></span>
+    </div>
+    <input id="q" type="search" placeholder="Search products, fabrics, brands…" autocomplete="off">
+    <nav class="nav">
+      <a href="./">📱 Feed</a>
+      <a href="palettes.html" id="nav-palette">🎨 Shop by palette</a>
+    </nav>
+  </header>
+
+  <div class="layout">
+    <aside class="filters" id="filters">
+      <section>
+        <div class="section-head">
+          <h3>Stores</h3>
+          <span><button id="stores-all" class="link">All</button> · <button id="stores-none" class="link">None</button></span>
+        </div>
+        <div id="f-stores" class="chips"></div>
+      </section>
+      <section class="pal-filter">
+        <div class="pal-filter-head">
+          <h3>Colour palette</h3>
+          <a href="palettes.html" id="pal-advanced">Advanced mode →</a>
+        </div>
+        <div id="f-palette"></div>
+      </section>
+      <section>
+        <h3>Exclude colours</h3>
+        <div id="f-exclude" class="chips"></div>
+      </section>
+      <section>
+        <h3>Category</h3>
+        <select id="f-category"></select>
+      </section>
+      <section>
+        <h3>Brand</h3>
+        <input id="f-brand-q" class="brand-search" type="search" placeholder="Search brands…" autocomplete="off">
+        <div id="f-brands" class="chips"></div>
+        <button id="f-brands-more" class="link" hidden></button>
+      </section>
+      <section>
+        <h3>Material</h3>
+        <div id="f-fabrics" class="chips"></div>
+      </section>
+      <section>
+        <h3>Function</h3>
+        <div id="f-features" class="chips"></div>
+      </section>
+      <section>
+        <h3>Gender</h3>
+        <select id="f-gender">
+          <option value="">Any</option>
+          <option value="men">Men + unisex</option>
+          <option value="women">Women + unisex</option>
+        </select>
+      </section>
+      <section>
+        <h3>My size</h3>
+        <select id="f-size">
+          <option value="">Any</option>
+          <option>XXS</option><option>XS</option><option>S</option><option>M</option>
+          <option>L</option><option>XL</option><option>XXL</option>
+        </select>
+      </section>
+      <section>
+        <h3>Price (SEK)</h3>
+        <div class="row">
+          <input id="f-min" type="number" inputmode="numeric" placeholder="min">
+          <input id="f-max" type="number" inputmode="numeric" placeholder="max">
+        </div>
+      </section>
+      <section>
+        <label class="check"><input type="checkbox" id="f-stock" checked> In stock only</label>
+        <label class="check"><input type="checkbox" id="f-sale"> On sale</label>
+      </section>
+      <button id="reset" class="link">Reset filters</button>
+    </aside>
+
+    <main>
+      <div class="toolbar">
+        <span id="count" class="muted"></span>
+        <div class="toolbar-right">
+          <button id="toggle-filters" class="btn ghost only-mobile">Filters</button>
+          <select id="sort">
+            <option value="relevance">Sort: relevance</option>
+            <option value="price-asc">Price: low → high</option>
+            <option value="price-desc">Price: high → low</option>
+            <option value="discount">Biggest discount</option>
+            <option value="newest">Newest first</option>
+          </select>
+        </div>
+      </div>
+      <div id="grid" class="grid"></div>
+      <div class="more"><button id="more" class="btn ghost">Show more</button></div>
+    </main>
+  </div>
+
+  <div id="compare-bar" class="compare-bar" hidden>
+    <span id="compare-count"></span>
+    <button id="compare-open" class="btn">Compare</button>
+    <button id="compare-clear" class="link">Clear</button>
+  </div>
+
+  <dialog id="detail"></dialog>
+  <dialog id="compare" class="wide"></dialog>
+  <dialog id="add-store" class="narrow"></dialog>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>

@@ -1,4 +1,4 @@
-/* Personal Shopper feed: full-screen products, dark like Reels/TikTok. Mobile first;
+/* Runnista feed: full-screen products, dark like Reels/TikTok. Mobile first;
    from 900px the photo and its details sit side by side. */
 :root {
   --bg: #000;
@@ -10,6 +10,7 @@
   --muted: #a1a1a8;
   --accent: #7c9fff;
   --sale: #ff6b5e;
+  --heart: #ff3b5c;
   --on-light: #0b0b0c;
   --photo-bg: #f4f4f2; /* product shots are on white or light grey: their edges fade into this */
   --bar-h: calc(64px + env(safe-area-inset-bottom));
@@ -99,7 +100,7 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
 /* Caption over the photo */
 .caption {
   position: absolute; z-index: 3; left: 0; right: 0; bottom: var(--bar-h);
-  padding: 0 16px 10px; color: #fff; pointer-events: none;
+  padding: 0 72px 10px 16px; color: #fff; pointer-events: none;
   text-shadow: 0 1px 3px rgb(0 0 0 / .45);
   display: flex; flex-direction: column; gap: 4px;
 }
@@ -148,6 +149,30 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
 .pill.on { background: #fff; color: var(--on-light); border-color: #fff; }
 .pill .strip { display: inline-flex; width: 14px; height: 14px; border-radius: 50%; overflow: hidden; flex: none; }
 .pill .strip i { flex: 1; }
+/* ♥ before Colours: saved products, with a count */
+.saved-btn {
+  position: relative; width: 42px; height: 46px; flex: none; display: grid; place-items: center;
+  padding: 0; border: 0; border-radius: 12px; background: transparent; color: #fff; cursor: pointer;
+}
+.saved-btn .heart { width: 25px; height: 25px; }
+.saved-btn.on .heart { fill: var(--heart); stroke: var(--heart); }
+.saved-btn .count {
+  position: absolute; top: 4px; right: 0; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px;
+  background: #fff; color: var(--on-light); font-size: 11px; font-weight: 800; line-height: 18px; text-align: center;
+}
+.saved-btn:active { transform: scale(.96); }
+
+/* ♥ on the photo and in the details */
+.save {
+  position: absolute; z-index: 4; right: 10px; bottom: calc(var(--bar-h) + 12px);
+  width: 50px; height: 50px; padding: 0; border: 0; border-radius: 50%; display: grid; place-items: center; cursor: pointer;
+  background: rgb(0 0 0 / .32); color: #fff; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+}
+.save .heart { width: 28px; height: 28px; transition: transform .2s ease; }
+.save[aria-pressed=true] .heart { fill: var(--heart); stroke: var(--heart); animation: pop .3s ease; }
+.save.small { position: static; width: 40px; height: 40px; background: var(--surface); backdrop-filter: none; }
+.save.small .heart { width: 22px; height: 22px; }
+@keyframes pop { 50% { transform: scale(1.25); } }
 
 /* ---------- Details ---------- */
 .info {
@@ -220,6 +245,9 @@ button.size { cursor: pointer; }
 
 /* ---------- Loading ---------- */
 .loading { position: fixed; inset: 0; display: grid; place-content: center; justify-items: center; gap: 14px; color: var(--muted); }
+/* The build's pre-rendered first products (data-pre) stand in for the spinner, unless you have
+   your own filters (html.custom, set in index.html): then they're the wrong products. */
+html:not(.custom) .feed:has(> [data-pre]) ~ .loading, .custom [data-pre] { display: none; }
 .spinner { width: 34px; height: 34px; border-radius: 50%; border: 3px solid var(--surface-2); border-top-color: #fff; animation: spin .8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
@@ -272,6 +300,9 @@ button.size { cursor: pointer; }
 .tabs { flex: 1; display: flex; gap: 2px; padding: 4px; border-radius: 14px; background: var(--surface); }
 .tabs button { flex: 1; min-height: 38px; border: 0; border-radius: 10px; background: transparent; color: var(--muted); font-weight: 650; cursor: pointer; }
 .tabs button[aria-selected=true] { background: #fff; color: var(--on-light); }
+.tabs #tab-saved { flex: 0 0 48px; display: grid; place-items: center; }
+.tabs #tab-saved svg { width: 20px; height: 20px; }
+.tabs #tab-saved[aria-selected=true] svg { fill: var(--heart); stroke: var(--heart); }
 .sheet-body { flex: 1; overflow-y: auto; overscroll-behavior: contain; padding: 4px 18px 24px; }
 .sheet-foot { display: flex; gap: 10px; padding: 12px 18px calc(12px + env(safe-area-inset-bottom)); border-top: 1px solid var(--line); flex: none; }
 .sheet-foot .primary { flex: 1; }
@@ -296,6 +327,27 @@ button.size { cursor: pointer; }
 .dept h4 { margin: 0; font-size: 14px; font-weight: 700; }
 .feedback { font-size: 14px; gap: 6px; }
 .sheet-body > .classic { display: block; margin-top: 14px; }
+.sheet-foot [hidden] { display: none; }
+
+/* Saved tab */
+.saved-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.saved-row { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.saved-row:last-child { border-bottom: 0; }
+.saved-link { flex: 1; min-width: 0; display: flex; gap: 12px; align-items: center; color: inherit; text-decoration: none; }
+.saved-link img { width: 64px; height: 80px; flex: none; border-radius: 10px; object-fit: cover; background: var(--photo-bg); }
+.saved-text { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.saved-text .who { color: var(--muted); font-size: 12px; }
+.saved-text .store-tag { background: var(--surface-2); color: var(--text); font-size: 10px; }
+.saved-title { font-weight: 650; font-size: 14.5px; line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.saved-price { font-size: 14px; font-weight: 700; }
+.saved-price.sale { color: var(--sale); }
+.saved-price s { color: var(--muted); font-weight: 400; font-size: 13px; }
+.saved-price em { color: var(--muted); font-style: normal; font-weight: 500; }
+.saved-row.gone img { opacity: .5; }
+.saved-actions { display: flex; flex-direction: column; align-items: center; gap: 6px; flex: none; }
+.saved-actions .link { font-size: 12.5px; }
+.empty-saved { align-items: center; text-align: center; padding-top: 40px; }
+.big-heart svg { width: 44px; height: 44px; color: var(--muted); }
 
 /* ---------- Wide screens: photo left, details right ---------- */
 @media (min-width: 900px) {
@@ -305,6 +357,7 @@ button.size { cursor: pointer; }
   .media { flex: 0 0 57%; }
   .info { flex: 1 1 auto; padding: 28px 32px 40px; border-left: 1px solid var(--line); }
   .peek, .back, .coach, .caption, .media::after { display: none; }
+  .info-top .save { display: none; } /* the photo's ♥ is right beside it */
   .shot { padding-bottom: var(--bar-h); }
   .info-top { justify-content: flex-end; }
   .title { font-size: 26px; }
