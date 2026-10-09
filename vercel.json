@@ -33,6 +33,7 @@
     { "source": "/social/", "destination": "/en-se/", "statusCode": 301 }
   ],
   "rewrites": [
+    { "source": "/(en-se|en-eu|en-us)/", "destination": "/" },
     { "source": "/(en-se|en-eu|en-us)/:path*", "destination": "/:path*" }
   ]
 }
