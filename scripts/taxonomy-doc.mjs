@@ -12,7 +12,7 @@ const lines = [
   '# Master taxonomy',
   '',
   'Every store category is mapped onto this tree (department › subcategory).',
-  'Gender, warmth (merino/wool, warm, wind, water-resistant) and material are separate filters, not categories.',
+  'Gender, function (insulated, windproof, water-resistant, reflective) and material are separate filters, not categories.',
   'Rules live in `scripts/lib/taxonomy.mjs`; products the rules can only guess are classified by Claude (`data/ai-categories.json`).',
   '',
 ];

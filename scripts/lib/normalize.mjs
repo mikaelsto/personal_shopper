@@ -1,17 +1,44 @@
 // Turns a store-specific product into the unified product shape used by the site,
-// and derives category, gender, cold-weather features and materials from the text.
+// and derives category, gender, function features, fibres and materials from the text.
 
 import { classify, department } from './taxonomy.mjs';
 
-// Attribute keywords (English + Swedish). Categories live in taxonomy.mjs.
+// Function keywords (English + Swedish). Categories live in taxonomy.mjs, fibres in FABRICS below.
 const FEATURES = [
-  ['merino/wool', /\b(merino\w*|wool|ull|ullblandning)\b/],
-  ['warm', /\b(thermal|brushed|fleece|grid ?fleece|warm\w*|insulat\w*|winter|primaloft|polartec|alpha|thermo\w*|cold[- ]weather|varm|varma|värmande|fodrad|vinter\w*|termo\w*)\b/],
-  ['wind', /\b(windproof|wind[- ]?resistant|wind ?block\w*|wind ?jacket|windbreaker|wind ?shell|vindtät|vindavvisande|vindjacka)\b/],
+  ['insulated', /\b(thermal|brushed|fleece|grid ?fleece|warm\w*|insulat\w*|winter|primaloft|polartec|alpha|thermo\w*|cold[- ]weather|varm|varma|värmande|fodrad|vinter\w*|termo\w*)\b/],
+  ['windproof', /\b(windproof|wind[- ]?resistant|wind ?block\w*|wind ?jacket|windbreaker|wind ?shell|vindtät|vindavvisande|vindjacka)\b/],
   ['water-resistant', /\b(waterproof|water[- ]?(repellent|resistant)|gore-?tex|rain|dwr|pertex|vattentät|vattenavvisande|regn\w*)\b/],
   ['reflective', /\b(reflective|reflex|hi-?vis|reflexer|reflekterande)\b/],
-  ['long-sleeve', /\b(long ?sleeves?|l\/s|longsleeves?|långärmad|långärmade)\b/],
 ];
+
+// Fibre families (English + Swedish), shown as the Material filter. `recycled` and `organic`
+// are sourcing labels that sit alongside the fibres.
+export const FABRICS = [
+  ['wool', 'Wool & merino', /\b(merino\w*|wool|ull|ullblandning|ullfrotté|alpa(c|ck)a|cashmere|kashmir|mohair|yak)\b/],
+  ['cotton', 'Cotton', /\b(cotton|bomull\w*)\b/],
+  ['linen', 'Linen', /\b(linen|lin|linnetyg)\b(?!\w)/],
+  ['hemp', 'Hemp', /\b(hemp|hampa)\b/],
+  ['cellulose', 'Lyocell & viscose', /\b(tencel|lyocell|modal|viscose|viskos|cupro|rayon)\b/],
+  ['polyester', 'Polyester', /\b(polyester|recycled polyester|pes)\b/],
+  ['nylon', 'Nylon & polyamide', /\b(nylon|polyamid\w*|cordura)\b/],
+  ['down', 'Down', /\b(goose down|duck down|down fill|down insulat\w*|\d{3} ?(fp|fill ?power|cuin)|dun|gåsdun|anddun|dunjacka|dunväst)\b/],
+  ['leather', 'Leather & suede', /\b(leather|suede|läder|mocka)\b/],
+  ['recycled', 'Recycled', /\b(recycled|återvunn\w*|återvinn\w*)\b/],
+  ['organic', 'Organic', /\b(organic|ekologisk\w*|gots)\b/],
+];
+export const fabricLabel = (id) => FABRICS.find(([f]) => f === id)?.[1] ?? id;
+
+// Fibre composition ("80% merino wool, 20% nylon") is trusted over loose mentions in the text,
+// which often talk about other products ("pair it with a cotton tee").
+const COMPOSITION = /\d{1,3}\s?%\s?[^\n,.;]{2,40}/gi;
+export function detectFabrics(text) {
+  const t = String(text).toLowerCase();
+  const comp = (t.match(COMPOSITION) ?? []).join(' ');
+  const source = comp && FABRICS.some(([, , re]) => re.test(comp)) ? `${comp} ${t.match(/[^\n]*\b(recycled|återvunn\w*|organic|ekologisk\w*|gots)\b[^\n]*/g)?.join(' ') ?? ''}` : t;
+  return FABRICS.filter(([, , re]) => re.test(source)).map(([f]) => f);
+}
+
+export const detectFeatures = (text) => FEATURES.filter(([, re]) => re.test(String(text).toLowerCase())).map(([f]) => f);
 
 export function htmlToText(html) {
   return String(html)
@@ -47,6 +74,13 @@ function extractMaterials(text) {
   return line ? [line.replace(/^[-•\s]+/, '').slice(0, 140)] : [];
 }
 
+// Brings a product saved by an older version up to date (stores that failed keep their old data).
+export function upgradeProduct(p) {
+  if (p.fabrics) return p;
+  const text = `${p.title} ${p.productType ?? ''} ${p.description ?? ''}`;
+  return Object.assign(p, { features: detectFeatures(text), fabrics: detectFabrics(text) });
+}
+
 const uniq = (xs) => [...new Set(xs.filter(Boolean))];
 
 export function normalizeProduct(p) {
@@ -54,9 +88,8 @@ export function normalizeProduct(p) {
   // Only use human-readable tags for classification (skip codes like "FW25ESN").
   const readableTags = p.sourceTags.filter((t) => /[a-z]/.test(t) && t.length < 40);
   const { subcategory, generic } = classify({ title: p.title, storeCategory: p.productType ?? '', tags: readableTags });
-  const featureText = `${p.title} ${p.productType} ${readableTags.join(' ')} ${description}`.toLowerCase();
-  const features = FEATURES.filter(([, re]) => re.test(featureText)).map(([f]) => f);
-  if (subcategory === 'tops/long-sleeve' && !features.includes('long-sleeve')) features.push('long-sleeve');
+  const featureText = `${p.title} ${p.productType} ${readableTags.join(' ')} ${description}`;
+  const features = detectFeatures(featureText);
 
   const available = p.variants.filter((v) => v.available);
   const priced = (available.length ? available : p.variants).filter((v) => Number.isFinite(v.price));
@@ -79,6 +112,7 @@ export function normalizeProduct(p) {
     gender: p.gender ?? detectGender(`${p.title} ${readableTags.join(' ')}`),
     features,
     materials: extractMaterials(description),
+    fabrics: detectFabrics(featureText),
     description,
     images: uniq(p.images).slice(0, 10),
     currency: p.currency,

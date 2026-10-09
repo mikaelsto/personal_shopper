@@ -3,6 +3,7 @@
 
 import { TAXONOMY, label } from './lib/taxonomy.mjs';
 import { fromShopify, isGiftCard, shopifyPageUrl } from './lib/shopify-map.mjs';
+import { FABRICS, fabricLabel } from './lib/normalize.mjs';
 import { PALETTES, FAMILIES, paletteById } from './lib/palettes.mjs';
 import {
   loadSelection, saveSelection, selectionParams, isActive, targetColors, attachSwatches,
@@ -11,8 +12,8 @@ import {
 
 const REPO = 'mikaelsto/personal_shopper';
 const PAGE = 60;
-const COLD_FEATURES = ['long-sleeve', 'warm', 'merino/wool'];
-const COLD_SUBS = ['tops/long-sleeve', 'tops/base-layers'];
+// Sourcing labels narrow the fibre choice ("recycled" AND any chosen fibre) instead of widening it.
+const SOURCING = ['recycled', 'organic'];
 const HIDDEN_DEPTS = TAXONOMY.filter((d) => d.hidden).map((d) => d.id);
 const catLabel = (p) => (p.subcategory && p.subcategory !== 'other' ? `${label(p.category)} › ${label(p.subcategory)}` : 'Other');
 
@@ -60,7 +61,7 @@ const votes = store.get('paletteVotes', {});
 const FEEDBACK_LINES_PER_ISSUE = 120; // keeps the pre-filled issue URL under GitHub's limit
 
 const state = {
-  q: '', stores: new Set(), category: '', features: new Set(), cold: false,
+  q: '', stores: new Set(), category: '', features: new Set(), fabrics: new Set(),
   gender: '', size: store.get('size', ''), min: '', max: '', stock: true, sale: false, sort: 'relevance',
 };
 
@@ -118,8 +119,13 @@ function buildFilters() {
       '</optgroup>').join('') +
     (counts.other ? opt('other', 'Other / uncategorised', counts.other) : '');
 
-  const feats = [...new Set(all.flatMap((p) => p.features))].sort();
-  $('#f-features').innerHTML = feats.map((f) => `<button class="chip" data-feature="${esc(f)}" aria-pressed="${state.features.has(f)}">${esc(f)}</button>`).join('');
+  const tally = (key) => all.filter(inPalette).reduce((a, p) => { for (const v of p[key] ?? []) a[v] = (a[v] ?? 0) + 1; return a; }, {});
+  const fabricCounts = tally('fabrics');
+  $('#f-fabrics').innerHTML = FABRICS.filter(([f]) => fabricCounts[f] || state.fabrics.has(f)).map(([f, text]) =>
+    `<button class="chip" data-fabric="${esc(f)}" aria-pressed="${state.fabrics.has(f)}">${esc(text)} <span class="n">${fabricCounts[f] ?? 0}</span></button>`).join('');
+  const featCounts = tally('features');
+  $('#f-features').innerHTML = Object.keys(featCounts).sort().map((f) =>
+    `<button class="chip" data-feature="${esc(f)}" aria-pressed="${state.features.has(f)}">${esc(f)} <span class="n">${featCounts[f]}</span></button>`).join('');
   $('#f-size').value = state.size;
   $('#f-category').value = state.category;
 }
@@ -134,6 +140,7 @@ function bind() {
     toggleChip(e, 'store', state.stores);
   });
   $('#f-features').addEventListener('click', (e) => toggleChip(e, 'feature', state.features));
+  $('#f-fabrics').addEventListener('click', (e) => toggleChip(e, 'fabric', state.fabrics));
   $('#f-palette').addEventListener('click', (e) => {
     const tile = e.target.closest('[data-season]');
     const rm = e.target.closest('[data-uncolor]');
@@ -151,7 +158,6 @@ function bind() {
   });
   const on = (id, key, prop = 'value', after) => $(id).addEventListener('change', (e) => { state[key] = e.target[prop]; after?.(); apply(); });
   on('#f-category', 'category');
-  on('#f-cold', 'cold', 'checked');
   on('#f-gender', 'gender');
   on('#f-size', 'size', 'value', () => store.set('size', state.size));
   on('#f-min', 'min');
@@ -193,9 +199,10 @@ function toggleChip(e, attr, set) {
 }
 
 function reset(run = true) {
-  Object.assign(state, { q: '', category: '', cold: false, gender: '', min: '', max: '', stock: true, sale: false });
+  Object.assign(state, { q: '', category: '', gender: '', min: '', max: '', stock: true, sale: false });
   state.stores.clear();
   state.features.clear();
+  state.fabrics.clear();
   $('#q').value = '';
   syncControls();
   if (run) apply();
@@ -203,13 +210,13 @@ function reset(run = true) {
 
 function syncControls() {
   $('#f-category').value = state.category;
-  $('#f-cold').checked = state.cold;
   $('#f-gender').value = state.gender;
   $('#f-min').value = state.min;
   $('#f-max').value = state.max;
   $('#f-stock').checked = state.stock;
   $('#f-sale').checked = state.sale;
   document.querySelectorAll('[data-store]').forEach((b) => b.setAttribute('aria-pressed', state.stores.has(b.dataset.store)));
+  document.querySelectorAll('[data-fabric]').forEach((b) => b.setAttribute('aria-pressed', state.fabrics.has(b.dataset.fabric)));
   document.querySelectorAll('[data-feature]').forEach((b) => b.setAttribute('aria-pressed', state.features.has(b.dataset.feature)));
 }
 
@@ -300,10 +307,16 @@ function feedbackHtml() {
   </div>`;
 }
 
-const isCold = (p) => COLD_SUBS.includes(p.subcategory) || p.category === 'midlayers' || p.features.some((f) => COLD_FEATURES.includes(f));
 // Category filter value: "" (all except hidden departments), a department, a subcategory, or "a+b".
 const inCategory = (p, value) =>
   value ? value.split('+').some((v) => p.category === v || p.subcategory === v) : !HIDDEN_DEPTS.includes(p.category);
+function hasFabric(p) {
+  if (!state.fabrics.size) return true;
+  const own = p.fabrics ?? [];
+  const fibres = [...state.fabrics].filter((f) => !SOURCING.includes(f));
+  return [...state.fabrics].filter((f) => SOURCING.includes(f)).every((f) => own.includes(f)) &&
+    (!fibres.length || fibres.some((f) => own.includes(f)));
+}
 const hasSize = (p, size) => p.variants.some((v) => v.available && sizeLetter(v.size) === size);
 
 function apply() {
@@ -315,7 +328,7 @@ function apply() {
     inPalette(p) &&
     inCategory(p, state.category) &&
     [...state.features].every((f) => p.features.includes(f)) &&
-    (!state.cold || isCold(p)) &&
+    hasFabric(p) &&
     (!state.gender || p.gender === state.gender || p.gender === 'unisex') &&
     (!state.stock || p.available) &&
     (!state.sale || p.compareAt) &&
@@ -324,7 +337,7 @@ function apply() {
     words.every((w) => p._text.includes(w)),
   );
 
-  const score = (p) => (state.cold ? p.features.filter((f) => COLD_FEATURES.includes(f)).length * 2 : 0) + (p.available ? 1 : 0) + (p.title.toLowerCase().includes(state.q) && state.q ? 3 : 0);
+  const score = (p) => (p.available ? 1 : 0) + (p.title.toLowerCase().includes(state.q) && state.q ? 3 : 0);
   const discount = (p) => (p.compareAt ? 1 - p.price / p.compareAt : 0);
   const sorters = {
     relevance: (a, b) => score(b) - score(a),
@@ -434,7 +447,7 @@ function openCompare() {
       ${row('Price', priceHtml)}
       ${row('Category', (p) => esc(catLabel(p)))}
       ${row('Features', (p) => p.features.map((f) => `<span class="tag">${esc(f)}</span>`).join('') || '–')}
-      ${row('Material', (p) => esc(p.materials.join(', ')) || '–')}
+      ${row('Material', (p) => [(p.fabrics ?? []).map((f) => `<span class="tag">${esc(fabricLabel(f))}</span>`).join(''), esc(p.materials.join(', '))].filter(Boolean).join('<br>') || '–')}
       ${row('Sizes in stock', (p) => esc([...new Set(p.sizesInStock.map(shortSize))].join(' ')) || 'Sold out')}
       ${row('Description', (p) => `<div class="desc">${esc(p.description.slice(0, 600))}</div>`)}
       ${row('', (p) => `<button class="btn ghost" data-open="${esc(p.id)}">Details</button> <a class="btn ghost" href="${esc(p.url)}" target="_blank" rel="noopener">Store ↗</a>`)}
@@ -463,7 +476,7 @@ async function openDetail(id) {
       <div class="info">
         <div class="muted">${esc(p.brand)} · sold by <strong>${esc(p.storeName)}</strong></div>
         ${priceHtml(p)}
-        <div>${p.features.map((f) => `<span class="tag">${esc(f)}</span>`).join('')}<span class="tag">${esc(catLabel(p))}</span>${p.gender !== 'unisex' ? `<span class="tag">${p.gender}</span>` : ''}</div>
+        <div>${p.features.map((f) => `<span class="tag">${esc(f)}</span>`).join('')}${(p.fabrics ?? []).map((f) => `<span class="tag">${esc(fabricLabel(f))}</span>`).join('')}<span class="tag">${esc(catLabel(p))}</span>${p.gender !== 'unisex' ? `<span class="tag">${p.gender}</span>` : ''}</div>
         ${p.colors.length ? `<h3>Colour</h3><div>${swatchesHtml(p) || esc(p.colors.join(', '))}${p._swatches.length ? `<div class="muted">${esc(p.colors.join(', '))}</div>` : ''}</div>` : ''}
         <h3>Size</h3>
         <div class="sizes">${p.variants.map((v) => `<button class="size" data-variant="${esc(v.id)}" ${v.available ? '' : 'disabled'} aria-pressed="false">${esc(v.size ?? 'One size')}${p.colors.length > 1 && v.color ? ` · ${esc(v.color)}` : ''}</button>`).join('')}</div>

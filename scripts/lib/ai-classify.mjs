@@ -109,6 +109,5 @@ export function applyAiCategories(products, cache) {
     p.category = department(sub);
     p.categoryGeneric = false;
     p.categorySource = 'ai';
-    if (sub === 'tops/long-sleeve' && !p.features.includes('long-sleeve')) p.features.push('long-sleeve');
   }
 }

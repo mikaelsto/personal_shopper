@@ -36,7 +36,7 @@ How a store is read, tried in this order:
 Every store category is mapped onto one master tree (department › subcategory). The tree and the per-store mapping are listed in [TAXONOMY.md](TAXONOMY.md).
 
 - The rules live in `scripts/lib/taxonomy.mjs` and cover English and Swedish keywords.
-- Gender, warmth and material are separate filters, not categories.
+- Gender, function and material are separate filters, not categories.
 - "Gear & lifestyle" items (furniture, knives, cookware…) are hidden unless you select that category.
 - Products the rules can only guess at are classified by **Claude**. Results are cached in `data/ai-categories.json`, so each product is sent only once.
 

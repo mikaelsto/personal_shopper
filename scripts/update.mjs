@@ -9,6 +9,7 @@
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { fetchStore } from './adapters/index.mjs';
+import { upgradeProduct } from './lib/normalize.mjs';
 import { aiClassify, applyAiCategories } from './lib/ai-classify.mjs';
 import { aiResolveColors } from './lib/ai-colors.mjs';
 import { aiImageColors, applyImageColors } from './lib/ai-image-colors.mjs';
@@ -55,7 +56,7 @@ for (const store of stores) {
 // Merge: refreshed stores replace their products; others are kept as-is.
 // Products from stores no longer in stores.json are dropped.
 const registered = new Set(STORES.map((s) => s.id));
-const merged = previous.products.filter((p) => !fresh.has(p.store) && registered.has(p.store));
+const merged = previous.products.filter((p) => !fresh.has(p.store) && registered.has(p.store)).map(upgradeProduct);
 for (const products of fresh.values()) {
   for (const p of products) {
     const old = prevById.get(p.id);
