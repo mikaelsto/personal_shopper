@@ -254,3 +254,38 @@ dialog.narrow { width: min(520px, 94vw); }
   .pal-summary { flex-basis: 100%; }
   .pal-bar .btn { flex: 1; text-align: center; }
 }
+
+/* Palette overview + labelled colour chips */
+.pal-overview { margin-top: 28px; }
+.pal-overview h2 { font-size: 18px; margin: 0 0 4px; }
+.pal-overview > p { margin: 0 0 12px; }
+.ov { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 6px; }
+.ov-row { display: grid; grid-template-columns: 210px 1fr; gap: 12px; align-items: center; padding: 6px; border-radius: 10px; }
+.ov-row.on { background: color-mix(in srgb, var(--accent) 12%, transparent); }
+.ov-name { display: flex; flex-direction: column; align-items: flex-start; text-align: left; background: none; border: 0; padding: 4px 6px; cursor: pointer; border-radius: 8px; }
+.ov-name:hover { background: var(--chip); }
+.ov-name .muted { font-size: 12px; }
+.ov-name[aria-pressed=true] strong::before { content: '✓ '; color: var(--accent); }
+.ov-colors { display: flex; gap: 4px; align-items: center; min-width: 0; }
+.ov-tile { flex: 1 1 0; min-width: 0; height: 44px; border: 1px solid rgb(0 0 0 / .1); border-radius: 6px; padding: 0; cursor: pointer; }
+.ov-tile.neutral { flex: .7 1 0; height: 32px; }
+.ov-tile[aria-pressed=true] { outline: 3px solid var(--accent); outline-offset: 1px; }
+.ov-sep { width: 1px; align-self: stretch; background: var(--line); margin: 0 6px; flex: none; }
+
+.chip-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+.chip-label { font-size: 12px; margin-bottom: -4px; }
+.swatch-chip {
+  display: flex; flex-direction: column; gap: 2px; padding: 0 0 4px; cursor: pointer; min-width: 0;
+  background: none; border: 0; text-align: left; border-radius: 8px;
+}
+.swatch-chip .tile { display: block; height: 46px; border-radius: 8px; border: 1px solid rgb(0 0 0 / .12); }
+.swatch-chip.small .tile { height: 28px; }
+.swatch-chip .name { font-size: 11px; line-height: 1.2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.swatch-chip .hex { font-size: 10px; color: var(--muted); font-family: ui-monospace, monospace; }
+.swatch-chip[aria-pressed=true] .tile { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+@media (max-width: 860px) {
+  .ov-row { grid-template-columns: 1fr; gap: 4px; }
+  .ov-tile { height: 36px; }
+  .ov-tile.neutral { height: 26px; }
+}

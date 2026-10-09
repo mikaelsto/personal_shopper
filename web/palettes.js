@@ -17,7 +17,25 @@ let products = null; // loaded in the background for counts
 const swatch = (c, cls = '') =>
   `<button class="swatch ${cls}" data-hex="${esc(c.hex.toLowerCase())}" style="--c:${esc(c.hex)}" title="${esc(c.name)} ${esc(c.hex)}" aria-label="${esc(c.name)}" aria-pressed="false"></button>`;
 
+// Colour with its name and hex underneath (selectable like a swatch).
+const chip = (c, cls = '') =>
+  `<button class="swatch-chip ${cls}" data-hex="${esc(c.hex.toLowerCase())}" aria-pressed="false" title="${esc(c.name)}">
+    <span class="tile" style="background:${esc(c.hex)}"></span>
+    <span class="name">${esc(c.name)}</span><span class="hex">${esc(c.hex.toUpperCase())}</span>
+  </button>`;
+
 function render() {
+  // All 12 seasons as colour rows, so the whole system can be compared at a glance.
+  $('#overview').innerHTML = FAMILIES.map((f) => PALETTES.filter((p) => p.family === f.id).map((p) => `
+    <div class="ov-row" data-palette="${esc(p.id)}">
+      <button class="ov-name pal-toggle" aria-pressed="false"><strong>${esc(p.label)}</strong><span class="muted">${esc(p.blurb)}</span></button>
+      <div class="ov-colors">
+        ${p.colors.map((c) => `<button class="ov-tile swatch-tile" data-hex="${esc(c.hex.toLowerCase())}" style="background:${esc(c.hex)}" title="${esc(c.name)} ${esc(c.hex)}" aria-label="${esc(c.name)}" aria-pressed="false"></button>`).join('')}
+        <span class="ov-sep"></span>
+        ${p.neutrals.map((c) => `<button class="ov-tile neutral swatch-tile" data-hex="${esc(c.hex.toLowerCase())}" style="background:${esc(c.hex)}" title="${esc(c.name)} ${esc(c.hex)} (neutral)" aria-label="${esc(c.name)}" aria-pressed="false"></button>`).join('')}
+      </div>
+    </div>`).join('')).join('');
+
   $('#families').innerHTML = FAMILIES.map((f) => `
     <section class="pal-family">
       <h2>${esc(f.label)} <span class="muted">${esc(f.blurb)}</span></h2>
@@ -30,8 +48,9 @@ function render() {
                 <div><h3>${esc(p.label)}</h3><span class="muted">${esc(p.blurb)}</span></div>
                 <button class="btn ghost pal-toggle" aria-pressed="false">Select</button>
               </div>
-              <div class="swatch-row">${p.colors.map((c) => swatch(c)).join('')}</div>
-              <div class="swatch-row small"><span class="muted">Neutrals</span>${p.neutrals.map((c) => swatch(c, 'small')).join('')}</div>
+              <div class="chip-row">${p.colors.map((c) => chip(c)).join('')}</div>
+              <span class="muted chip-label">Neutrals</span>
+              <div class="chip-row">${p.neutrals.map((c) => chip(c, 'small')).join('')}</div>
               <span class="pal-count muted" data-count="${esc(p.id)}"></span>
             </div>
           </article>`).join('')}
@@ -48,7 +67,7 @@ function bind() {
       sel.palettes = sel.palettes.includes(id) ? sel.palettes.filter((x) => x !== id) : [...sel.palettes, id];
       return update();
     }
-    const sw = e.target.closest('.swatch');
+    const sw = e.target.closest('[data-hex]');
     if (sw) {
       const hex = sw.dataset.hex;
       sel.colors = sel.colors.includes(hex) ? sel.colors.filter((x) => x !== hex) : [...sel.colors, hex];
@@ -73,9 +92,9 @@ function update() {
     card.classList.toggle('on', on);
     const t = card.querySelector('.pal-toggle');
     t.setAttribute('aria-pressed', on);
-    t.textContent = on ? '✓ Selected' : 'Select';
+    if (!t.classList.contains('ov-name')) t.textContent = on ? '✓ Selected' : 'Select';
   });
-  document.querySelectorAll('.swatch').forEach((s) => s.setAttribute('aria-pressed', sel.colors.includes(s.dataset.hex)));
+  document.querySelectorAll('[data-hex]').forEach((s) => s.setAttribute('aria-pressed', sel.colors.includes(s.dataset.hex)));
 
   const parts = [
     ...sel.palettes.map((id) => PALETTES.find((p) => p.id === id).label),
