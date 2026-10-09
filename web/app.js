@@ -7,7 +7,7 @@ import { FABRICS, fabricLabel } from './lib/normalize.mjs';
 import { PALETTES, FAMILIES, paletteById } from './lib/palettes.mjs';
 import {
   loadSelection, saveSelection, selectionParams, isActive, targetColors, attachSwatches,
-  matchingColorways, matchInfo, loadColorOverrides, colorName,
+  matchingColorways, matchInfo, loadColorOverrides, colorName, EXCLUDABLE, isExcluded, passesExclude,
 } from './palette-filter.js';
 
 const REPO = 'mikaelsto/personal_shopper';
@@ -104,6 +104,7 @@ function renderStoreChips() {
 function buildFilters() {
   renderStoreChips();
   renderPaletteFilter();
+  renderExcludeFilter();
   const counts = all.filter(inPalette).reduce((a, p) => {
     a[p.category] = (a[p.category] ?? 0) + 1;
     a[p.subcategory] = (a[p.subcategory] ?? 0) + 1;
@@ -151,6 +152,13 @@ function bind() {
     else if (rm?.dataset.uncolor) setPalette({ colors: palette.colors.filter((h) => h !== rm.dataset.uncolor) });
     else if (e.target.closest('#pal-clear-all')) setPalette({ palettes: [], colors: [] });
     else if (e.target.closest('#pal-send')) sendFeedback();
+  });
+  $('#f-exclude').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-exclude]');
+    if (!b) return;
+    const id = b.dataset.exclude;
+    const ex = palette.exclude ?? [];
+    setPalette({ exclude: ex.includes(id) ? ex.filter((x) => x !== id) : [...ex, id] });
   });
   $('#f-palette').addEventListener('change', (e) => {
     if (e.target.id === 'pal-neutrals') setPalette({ neutrals: e.target.checked });
@@ -223,11 +231,13 @@ function syncControls() {
 // ---------- Palette filter ----------
 // p._pm = best match { kind: 'signature'|'neutral', dE, swatch, target } for the current selection.
 function computeMatches(list) {
-  for (const p of list) p._pm = targets.length ? matchInfo(p, targets, palette.match) : null;
+  for (const p of list) p._pm = targets.length ? matchInfo(p, targets, palette.match, palette.exclude) : null;
 }
-const inPalette = (p) => !targets.length || !!p._pm;
+// In the palette (if one is chosen) and not only in excluded colours (e.g. "no black or white").
+const inPalette = (p) => passesExclude(p, palette.exclude) && (!targets.length || !!p._pm);
 
-const selKey = () => selectionParams(palette).toString();
+// Votes are about palette fit, so the colour exclusions aren't part of their key.
+const selKey = () => { const q = selectionParams(palette); q.delete('exclude'); return q.toString(); };
 const voteOf = (p) => votes[`${p.id} ${selKey()}`]?.v ?? 0;
 
 function vote(id, v) {
@@ -296,6 +306,21 @@ function renderPaletteFilter() {
     ${feedbackHtml()}`;
 }
 
+// "Exclude colours" chips; the count is how many products (in the current palette) each one hides.
+function renderExcludeFilter() {
+  const ex = palette.exclude ?? [];
+  const shown = all.filter((p) => inPalette(p) && inCategory(p, state.category));
+  // Would excluding x hide p? Either all its colours are excluded, or (with a palette) the
+  // colourway it matched on is excluded and no other colourway matches.
+  const hidesP = (p, more) => !passesExclude(p, more) ||
+    (!!p._pm && isExcluded(p._pm.swatch, more) && !matchInfo(p, targets, palette.match, more));
+  $('#f-exclude').innerHTML = EXCLUDABLE.map((x) => {
+    const hides = ex.includes(x.id) ? null : shown.filter((p) => hidesP(p, [...ex, x.id])).length;
+    return `<button class="chip ex-chip" data-exclude="${esc(x.id)}" aria-pressed="${ex.includes(x.id)}" title="${ex.includes(x.id) ? 'Show' : 'Hide'} products that only come in ${esc(x.label.toLowerCase())}">
+      <i class="dot" style="background:${esc(x.hex)}"></i>${esc(x.label)}${hides != null ? ` <span class="n">${hides}</span>` : ''}</button>`;
+  }).join('');
+}
+
 function feedbackHtml() {
   const all = Object.values(votes);
   if (!all.length) return isActive(palette) ? '<p class="note">Tip: rate products with 👍/👎 to help improve colour matching.</p>' : '';
@@ -355,6 +380,7 @@ function apply() {
     ? (a, b) => group(a) - group(b) || (state.sort === 'relevance' ? byMatch(a, b) : sorter(a, b))
     : sorter);
   shown = PAGE;
+  renderExcludeFilter(); // its counts follow the category
   render();
 }
 
@@ -369,7 +395,7 @@ function priceHtml(p) {
 // Colour dots per colourway; colourways in the chosen palette are ringed.
 function swatchesHtml(p) {
   if (!p._swatches?.length) return '';
-  const hits = new Set(targets.length ? matchingColorways(p, targets, palette.match).map((s) => s.name) : []);
+  const hits = new Set(targets.length ? matchingColorways(p, targets, palette.match, palette.exclude).map((s) => s.name) : []);
   const dots = p._swatches.slice(0, 8).map((s) => `<i class="dot ${hits.has(s.name) ? 'hit' : ''}" style="background:${esc(s.hex)}" title="${esc(s.name)}"></i>`).join('');
   const m = p._pm;
   const label = m

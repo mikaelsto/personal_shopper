@@ -5,7 +5,7 @@ import { hexToRgb } from './lib/colors.mjs';
 import { TAXONOMY } from './lib/taxonomy.mjs';
 import {
   loadSelection, saveSelection, selectionParams, isActive, targetColors, attachSwatches,
-  matchInfo, loadColorOverrides, colorName,
+  matchInfo, loadColorOverrides, colorName, EXCLUDABLE, passesExclude,
 } from './palette-filter.js';
 
 const $ = (s) => document.querySelector(s);
@@ -88,6 +88,13 @@ function bind() {
   });
   $('#opt-neutrals').addEventListener('change', (e) => { sel.neutrals = e.target.checked; update(); });
   $('#opt-match').addEventListener('change', (e) => { sel.match = e.target.value; update(); });
+  $('#opt-exclude').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-exclude]');
+    if (!b) return;
+    const id = b.dataset.exclude;
+    sel.exclude = sel.exclude.includes(id) ? sel.exclude.filter((x) => x !== id) : [...sel.exclude, id];
+    update();
+  });
   $('#pal-clear').addEventListener('click', () => { sel.palettes = []; sel.colors = []; update(); });
   $('#expand-all').addEventListener('click', (e) => {
     const open = e.target.dataset.open !== '1';
@@ -101,7 +108,7 @@ function bind() {
 const countFor = (s) => {
   const targets = targetColors(s);
   const c = { signature: 0, neutral: 0 };
-  for (const p of products) { const m = matchInfo(p, targets, s.match); if (m) c[m.kind]++; }
+  for (const p of products) { const m = passesExclude(p, s.exclude) && matchInfo(p, targets, s.match, s.exclude); if (m) c[m.kind]++; }
   return c;
 };
 const total = (c) => c.signature + c.neutral;
@@ -117,6 +124,9 @@ function update() {
     t.textContent = on ? '✓ Selected' : 'Select';
   });
   document.querySelectorAll('[data-hex]').forEach((s) => s.setAttribute('aria-pressed', sel.colors.includes(s.dataset.hex)));
+  document.querySelectorAll('[data-exclude]').forEach((b) => b.setAttribute('aria-pressed', sel.exclude.includes(b.dataset.exclude)));
+  const adv = [!sel.neutrals && 'no neutrals', sel.match === 'broad' && 'broad match', sel.exclude.length && `excluding ${sel.exclude.map((id) => EXCLUDABLE.find((x) => x.id === id).label.toLowerCase()).join(', ')}`].filter(Boolean);
+  $('#adv-summary').textContent = adv.length ? `· ${adv.join(' · ')}` : '';
   document.querySelectorAll('[data-nav]').forEach((a) => a.classList.toggle('on', sel.palettes.includes(a.dataset.nav)));
 
   const parts = [
@@ -145,6 +155,9 @@ function update() {
 $('#sources').innerHTML = SOURCES.map((x) => `<a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.name)}</a>`).join(' and ');
 $('#opt-neutrals').checked = sel.neutrals;
 $('#opt-match').value = sel.match;
+$('#opt-exclude').innerHTML = EXCLUDABLE.map((x) =>
+  `<button class="chip ex-chip" data-exclude="${esc(x.id)}" aria-pressed="false"><i class="dot" style="background:${esc(x.hex)}"></i>${esc(x.label)}</button>`).join('');
+if (sel.exclude.length || !sel.neutrals || sel.match === 'broad') $('#advanced').open = true;
 render();
 bind();
 update();

@@ -22,15 +22,22 @@
     <section class="pal-intro">
       <h2>Find clothes in your colours</h2>
       <p>Each season has 45–60 colours: signature shades, a core palette, statement colours, everyday midtones, accents and neutrals, plus the colours to avoid. Select one or more seasons, or tap single colours. Then browse the shop as usual: every category only shows products in your colours.</p>
-      <div class="pal-options">
-        <label class="check"><input type="checkbox" id="opt-neutrals" checked> Include each palette's neutrals (black, navy, cream…)</label>
-        <label class="pal-match">Colour match
-          <select id="opt-match">
-            <option value="close">Close</option>
-            <option value="broad">Broad</option>
-          </select>
-        </label>
-      </div>
+      <details class="pal-advanced" id="advanced">
+        <summary>Advanced options <span class="muted" id="adv-summary"></span></summary>
+        <div class="pal-options">
+          <label class="check"><input type="checkbox" id="opt-neutrals" checked> Include each palette's neutrals (black, navy, cream…)</label>
+          <label class="pal-match">Colour match
+            <select id="opt-match">
+              <option value="close">Close</option>
+              <option value="broad">Broad</option>
+            </select>
+          </label>
+        </div>
+        <div class="pal-exclude">
+          <span class="pal-exclude-label">Exclude colours <span class="muted">hide products that only come in these, e.g. black and white basics</span></span>
+          <div id="opt-exclude" class="chips"></div>
+        </div>
+      </details>
     </section>
 
     <nav class="season-nav" id="season-nav" aria-label="Seasons"></nav>

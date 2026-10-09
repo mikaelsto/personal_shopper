@@ -325,3 +325,15 @@ dialog.narrow { width: min(520px, 94vw); }
   .cgrid { grid-template-columns: repeat(auto-fill, minmax(70px, 1fr)); }
   .cgrid.big { grid-template-columns: repeat(3, 1fr); }
 }
+
+/* Exclude colours + advanced options */
+.ex-chip { display: inline-flex; align-items: center; gap: 6px; }
+.ex-chip .dot { width: 11px; height: 11px; }
+.ex-chip[aria-pressed=true] { background: var(--chip); color: var(--text); border-color: var(--sale); text-decoration: line-through; text-decoration-color: var(--sale); }
+.ex-chip[aria-pressed=true] .dot { opacity: .5; }
+.pal-advanced { margin-top: 6px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); padding: 10px 14px; max-width: 760px; }
+.pal-advanced > summary { cursor: pointer; font-weight: 600; font-size: 14px; }
+.pal-advanced > summary .muted { font-weight: 400; }
+.pal-advanced[open] > summary { margin-bottom: 10px; }
+.pal-exclude { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; font-size: 14px; }
+.pal-exclude-label .muted { margin-left: 4px; }
