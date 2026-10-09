@@ -348,6 +348,17 @@ html:not(.custom) .feed:has(> [data-pre]) ~ .loading, .custom [data-pre] { displ
 .saved-actions .link { font-size: 12.5px; }
 .empty-saved { align-items: center; text-align: center; padding-top: 40px; }
 .big-heart svg { width: 44px; height: 44px; color: var(--muted); }
+/* Sign in to sync ♥ and votes (sync.js) */
+.sign-in { display: flex; flex-wrap: wrap; gap: 8px; }
+.sign-in input {
+  flex: 1 1 200px; min-width: 0; min-height: 48px; padding: 0 14px;
+  border: 1px solid var(--line); border-radius: 14px; background: var(--surface);
+}
+.sign-in input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+.sign-in .btn { flex: 1 0 auto; }
+.sign-in .btn:disabled { opacity: .6; cursor: default; }
+.account .link { align-self: flex-start; font-size: 14px; }
+.hint.error { color: var(--sale); }
 
 /* ---------- Wide screens: photo left, details right ---------- */
 @media (min-width: 900px) {

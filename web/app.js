@@ -15,6 +15,7 @@ import {
   REPO, esc, sek, store, catLabel, displayTitle, thumb, sizeLetter, shortSize, historyHtml, loadFeed, loadDetails, loadSearchWords,
   loadHiddenStores, saveHiddenStores, approx, localPrice,
 } from './shop-utils.js';
+import { syncVote } from './sync.js';
 
 const PAGE = 60;
 // Sourcing labels narrow the fibre choice ("recycled" AND any chosen fibre) instead of widening it.
@@ -260,6 +261,7 @@ function vote(id, v) {
   if (votes[key]?.v === v) delete votes[key];
   else votes[key] = { v, at: new Date().toISOString().slice(0, 10), sent: false };
   store.set('paletteVotes', votes);
+  syncVote(key, votes[key] ?? null);
   renderPaletteFilter();
   // Update the card in place (re-sorting now would make it jump); 👎 moves it to the end next time.
   const card = document.querySelector(`.card[data-id="${CSS.escape(id)}"]`);

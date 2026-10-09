@@ -17,6 +17,7 @@ import {
   esc, sek, store, catLabel, displayTitle, thumb, srcset, sizeLetter, shortSize, historyHtml, loadFeed, loadDetails,
   loadHiddenStores, saveHiddenStores, approx, localPrice, loadSaved, isSaved, toggleSaved,
 } from './shop-utils.js';
+import { account, linkError, cameFromLink, startSync, syncSaved, syncVote, signIn, signOut } from './sync.js';
 
 const BATCH = 6; // slides added at a time, a few ahead of the one on screen
 const HIDDEN_DEPTS = TAXONOMY.filter((d) => d.hidden).map((d) => d.id);
@@ -82,6 +83,7 @@ let dirty = false; // filters changed while the navigation layer was open
 const votes = store.get('paletteVotes', {}); // 👍/👎 "in my palette?", shared with the shop
 const voteOf = (p) => votes[`${p.id} ${voteKey(palette)}`]?.v ?? 0;
 let savedList = loadSaved(); // ♥ products, shared with the shop
+let signInUi = { step: '', email: '', error: linkError ? `The sign-in link didn't work: ${linkError}` : '' }; // Saved tab
 const byId = new Map();
 
 // Shared links: ?cat=tops/t-shirts&for=men&size=M,US9.5,EU42 (palette params are handled by palette-filter.js).
@@ -171,6 +173,15 @@ async function init() {
   $('#loading').remove();
   bindFeed();
   bindSheet();
+  // Signed in: the account's ♥ and votes replace (or, the first time here, merge with) this browser's.
+  const synced = await startSync(savedList, votes);
+  if (synced) {
+    savedList = synced.saved;
+    for (const k of Object.keys(votes)) delete votes[k];
+    Object.assign(votes, synced.votes);
+    refreshSaved();
+  }
+  if (cameFromLink) openSheet('saved'); // shows "Synced" (or why the link failed)
 }
 
 // ---------- Feed ----------
@@ -452,8 +463,13 @@ function save(id) {
   const p = byId.get(id) ?? savedList.find((x) => x.id === id);
   if (!p) return;
   savedList = toggleSaved(savedList, p);
-  const on = isSaved(savedList, id);
-  document.querySelectorAll(`[data-save="${CSS.escape(id)}"]`).forEach((b) => {
+  syncSaved(id, savedList.find((x) => x.id === id) ?? null);
+  refreshSaved();
+}
+
+function refreshSaved() {
+  document.querySelectorAll('[data-save]').forEach((b) => {
+    const on = isSaved(savedList, b.dataset.save);
     b.setAttribute('aria-pressed', on);
     b.setAttribute('aria-label', `${on ? 'Remove from' : 'Save to'} your saved products`);
   });
@@ -473,6 +489,7 @@ function vote(slide, btn) {
   if (votes[key]?.v === v) delete votes[key];
   else votes[key] = { v, at: TODAY, sent: false };
   store.set('paletteVotes', votes);
+  syncVote(key, votes[key] ?? null);
   // Not re-sorted now (the feed would jump); a 👎 product moves to the end next time.
   box.querySelectorAll('[data-vote]').forEach((b) => b.setAttribute('aria-pressed', votes[key]?.v === Number(b.dataset.vote)));
 }
@@ -594,6 +611,8 @@ function bindSheet() {
     if (d.tab) { state.tab = d.tab; saveFilters(); renderSheet(); $('.sheet-body', sheet).scrollTop = 0; return; }
     if (d.save) return save(d.save);
     if (d.goto) { const i = filtered.findIndex((p) => p.id === d.goto); sheet.close(); return goTo(i); }
+    if (t.id === 'sign-out') { signOut().catch(() => {}).finally(renderSheet); return; }
+    if (t.id === 'sign-in-again') { signInUi = { step: '', email: signInUi.email, error: '' }; return renderSheet(); }
     if (t.id === 'saved-clear') { if (confirm(`Remove all ${savedList.length} saved products?`)) [...savedList].forEach((x) => save(x.id)); return; }
     if (d.season) {
       const ids = palette.palettes;
@@ -624,6 +643,19 @@ function bindSheet() {
     if (t.id === 'clear-all') clearAll();
   });
   sheet.addEventListener('close', () => { if (dirty) { dirty = false; rebuild(); } });
+  sheet.addEventListener('submit', async (e) => {
+    if (e.target.id !== 'sign-in') return;
+    e.preventDefault();
+    signInUi = { step: 'sending', email: e.target.email.value.trim(), error: '' };
+    renderSheet();
+    try {
+      await signIn(signInUi.email);
+      signInUi.step = 'sent';
+    } catch (err) {
+      signInUi = { ...signInUi, step: '', error: `Couldn't send the link: ${err.message}` };
+    }
+    renderSheet();
+  });
 
   // Drag the sheet down by its top edge to close it.
   const head = [$('.sheet-grab', sheet), $('.sheet-head', sheet)];
@@ -703,8 +735,9 @@ function savedHtml() {
     <section class="group empty-saved">
       <p class="big-heart">${ICON.heart}</p>
       <h3>No saved products yet</h3>
-      <p class="hint">Tap ♥ on a product to save it here. The list is kept in this browser for 30 days after your last visit, no account needed.</p>
-    </section>`;
+      <p class="hint">Tap ♥ on a product to save it here. ${account ? 'Your list is kept in your account.' : 'The list is kept in this browser for 30 days after your last visit, no account needed.'}</p>
+    </section>
+    ${accountHtml()}`;
   const row = (x) => {
     const p = byId.get(x.id);
     const i = p ? filtered.indexOf(p) : -1;
@@ -732,7 +765,35 @@ function savedHtml() {
         <button id="saved-clear" class="link">Remove all</button>
       </div>
       <ul class="saved-list">${savedList.map(row).join('')}</ul>
-      <p class="hint">Kept in this browser on this device for 30 days after your last visit.</p>
+      ${account ? '' : '<p class="hint">Kept in this browser on this device for 30 days after your last visit.</p>'}
+    </section>
+    ${accountHtml()}`;
+}
+
+// Signing in (an emailed link, no password) keeps ♥ and votes in your account, on every device.
+function accountHtml() {
+  if (account) return `
+    <section class="group account">
+      <h3>Synced</h3>
+      <p class="hint">Your saved products and votes are kept in your account (${esc(account.email)}) and show on every device you sign in on.</p>
+      <button id="sign-out" class="link">Sign out</button>
+    </section>`;
+  if (signInUi.step === 'sent') return `
+    <section class="group account">
+      <h3>Check your email</h3>
+      <p class="hint">We sent a sign-in link to ${esc(signInUi.email)}. Open it on this device to sync your saved products and votes.</p>
+      <button id="sign-in-again" class="link">Use another email</button>
+    </section>`;
+  const sending = signInUi.step === 'sending';
+  return `
+    <section class="group account">
+      <h3>Sync across devices</h3>
+      <p class="hint">Sign in to keep your saved products and votes on your phone and computer. No password: we email you a link.</p>
+      <form id="sign-in" class="sign-in">
+        <input type="email" name="email" required autocomplete="email" placeholder="you@example.com" value="${esc(signInUi.email)}" aria-label="Your email">
+        <button class="btn primary" ${sending ? 'disabled' : ''}>${sending ? 'Sending…' : 'Email me a link'}</button>
+      </form>
+      ${signInUi.error ? `<p class="hint error" role="alert">${esc(signInUi.error)}</p>` : ''}
     </section>`;
 }
 

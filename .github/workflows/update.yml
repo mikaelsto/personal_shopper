@@ -41,6 +41,14 @@ jobs:
         run: node scripts/update.mjs
       - name: Update taxonomy report
         run: node scripts/taxonomy-doc.mjs
+      # Supabase pauses a free project after a week without requests; one small read a day keeps
+      # sign-in and syncing (web/sync.js) awake. Uses the public URL and key from web/config.js.
+      - name: Keep Supabase awake
+        continue-on-error: true
+        run: |
+          url=$(grep -o "https://[a-z0-9]*\.supabase\.co" web/config.js)
+          key=$(grep -o "sb_publishable_[A-Za-z0-9_-]*" web/config.js)
+          curl -sf "$url/rest/v1/saved_products?select=product_id&limit=1" -H "apikey: $key" > /dev/null
       - name: Commit data
         run: |
           git config user.name "github-actions[bot]"
