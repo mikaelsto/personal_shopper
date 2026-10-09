@@ -1,7 +1,7 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": null,
-  "buildCommand": "bash scripts/vercel-build.sh",
+  "buildCommand": "echo \"cwd: $(pwd)\"; ls -la; ls -la scripts | head -40; bash scripts/vercel-build.sh",
   "outputDirectory": "_site",
   "redirects": [
     {
