@@ -3,26 +3,26 @@
     "satisfy": {
       "ok": true,
       "count": 714,
-      "updatedAt": "2026-10-09T15:34:47.139Z"
+      "updatedAt": "2026-10-09T17:28:33.560Z"
     },
     "uvu": {
       "ok": true,
       "count": 104,
-      "updatedAt": "2026-10-09T15:34:49.138Z"
+      "updatedAt": "2026-10-09T17:28:35.326Z"
     },
     "kayo": {
       "ok": true,
       "count": 2204,
-      "updatedAt": "2026-10-09T15:35:00.635Z"
+      "updatedAt": "2026-10-09T17:28:45.938Z"
     },
     "loplabbet": {
       "ok": true,
-      "count": 2812,
-      "updatedAt": "2026-10-09T15:36:17.351Z"
+      "count": 2813,
+      "updatedAt": "2026-10-09T17:29:44.699Z"
     }
   },
-  "lastRun": "2026-10-09T15:36:17.387Z",
-  "total": 5834,
+  "lastRun": "2026-10-09T17:29:44.753Z",
+  "total": 5835,
   "unmapped": {
     "kayo: Objekt": 4
   }

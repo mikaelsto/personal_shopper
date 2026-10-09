@@ -4,18 +4,18 @@
 // The product page opens in a new tab, from the photo or the "To the product page" link.
 
 import { TAXONOMY, label } from '../lib/taxonomy.mjs';
-import { decodeProduct, detailsPath } from '../lib/feed.mjs';
 import { fabricLabel } from '../lib/normalize.mjs';
 import { PALETTES, FAMILIES, paletteById } from '../lib/palettes.mjs';
 import {
   loadSelection, saveSelection, isActive, targetColors, attachSwatches, matchingColorways, matchInfo,
   loadColorOverrides, colorName, EXCLUDABLE, passesExclude, voteKey, FEEDBACK_LINES_PER_ISSUE, sendVotes,
 } from '../palette-filter.js';
-import { esc, sek, store, catLabel, displayTitle, thumb, sizeLetter, shortSize, historyHtml } from '../shop-utils.js';
+import {
+  esc, sek, store, catLabel, displayTitle, thumb, sizeLetter, shortSize, historyHtml, loadFeed, loadDetails,
+} from '../shop-utils.js';
 
 const BATCH = 6; // slides added at a time, a few ahead of the one on screen
 const HIDDEN_DEPTS = TAXONOMY.filter((d) => d.hidden).map((d) => d.id);
-const dataUrl = (file) => new URL(`../data/${file}`, import.meta.url);
 const wide = matchMedia('(min-width: 900px)'); // photo and details side by side, no dragging
 const motion = () => (matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth');
 
@@ -71,10 +71,6 @@ let rendered = 0; // slides in the DOM
 let current = 0; // slide on screen
 let palette = loadSelection(); // shared with the shop and the palette page
 let targets = targetColors(palette);
-let feedVersion = ''; // feed.json's generatedAt: keeps details files from the same build
-// Description, materials, more photos and price history per product id, from data/feed/…;
-// a Promise while loading. Fetched for the product on screen and the next one.
-const detailsOf = new Map();
 let dirty = false; // filters changed while the navigation layer was open
 const votes = store.get('paletteVotes', {}); // 👍/👎 "in my palette?", shared with the shop
 const voteOf = (p) => votes[`${p.id} ${voteKey(palette)}`]?.v ?? 0;
@@ -142,9 +138,8 @@ init();
 
 async function init() {
   try {
-    const [data, overrides] = await Promise.all([fetch(dataUrl('feed.json')).then((r) => r.json()), loadColorOverrides()]);
-    feedVersion = data.generatedAt;
-    all = attachSwatches(data.products.map((p) => decodeProduct(p, data.stores)), overrides);
+    const [data, overrides] = await Promise.all([loadFeed(), loadColorOverrides()]);
+    all = attachSwatches(data.products.filter((p) => p.images.length), overrides);
   } catch (err) {
     console.error(err);
     $('#loading').textContent = 'Could not load products. Try again in a minute.';
@@ -169,8 +164,8 @@ const io = new IntersectionObserver((entries) => {
     if (e.intersectionRatio >= 0.6) {
       current = Number(slide.dataset.i);
       if (current >= rendered - 3) appendBatch();
-      loadDetails(current);
-      loadDetails(current + 1);
+      fetchDetails(current);
+      fetchDetails(current + 1);
     } else if (!e.isIntersecting) {
       // Back on the photo when you return to a product.
       const pager = $('.pager', slide);
@@ -305,7 +300,7 @@ function infoHtml(p, pos) {
     <section>
       <h3>About</h3>
       <div class="tags">${tags.map((t) => `<span class="tag">${esc(t)}</span>`).join('')}</div>
-      ${detailsHtml(p, detailsOf.get(p.id))}
+      ${detailsHtml(p)}
     </section>
 
     <section>
@@ -386,32 +381,31 @@ function fit(img) {
 }
 
 // The part of the details that comes from the product's own file (placeholder until it's loaded).
-function detailsHtml(p, d) {
-  if (!d || d instanceof Promise) return '<div class="details" data-details><p class="note">Loading the description…</p></div>';
+function detailsHtml(p) {
+  if (!p.details) return '<div class="details" data-details><p class="note">Loading the description…</p></div>';
   return `<div class="details">
-    ${d.materials ? `<p class="materials">${esc(d.materials.join(', '))}</p>` : ''}
-    ${d.description ? `<p class="desc">${esc(d.description)}</p>` : ''}
-    ${d.images ? `<section>
+    ${p.materials.length ? `<p class="materials">${esc(p.materials.join(', '))}</p>` : ''}
+    ${p.description ? `<p class="desc">${esc(p.description)}</p>` : ''}
+    ${p.images.length > 1 ? `<section>
       <h3>More photos</h3>
-      <div class="photos">${d.images.map((src) =>
+      <div class="photos">${p.images.slice(1).map((src) =>
         `<a href="${esc(p.url)}" target="_blank" rel="noopener" draggable="false"><img src="${esc(thumb(src, 400))}" alt="" loading="lazy" draggable="false"></a>`).join('')}</div>
     </section>` : ''}
     <section>
       <h3>Price history</h3>
-      <div class="history">${historyHtml(d.history ?? [])}</div>
-      <p class="note">First seen ${esc(d.firstSeen ?? '–')} · last checked ${esc(d.lastSeen ?? '–')}</p>
+      <div class="history">${historyHtml(p.history ?? [])}</div>
+      <p class="note">First seen ${esc(p.firstSeen ?? '–')} · last checked ${esc(p.lastSeen ?? '–')}</p>
     </section>
   </div>`;
 }
 
-function loadDetails(i) {
+// Fetched for the product on screen and the next one.
+function fetchDetails(i) {
   const p = filtered[i];
-  if (!p || detailsOf.has(p.id)) return;
-  const url = dataUrl(`${detailsPath(p.id)}?v=${encodeURIComponent(feedVersion)}`);
-  detailsOf.set(p.id, fetch(url).then((r) => (r.ok ? r.json() : {})).then((d) => {
-    detailsOf.set(p.id, d);
-    feed.querySelectorAll(`.slide[data-id="${CSS.escape(p.id)}"] [data-details]`).forEach((el) => { el.outerHTML = detailsHtml(p, d); });
-  }, () => detailsOf.delete(p.id))); // offline: try again next time it's on screen
+  if (!p || p.details) return;
+  loadDetails(p).then(() => {
+    feed.querySelectorAll(`.slide[data-id="${CSS.escape(p.id)}"] [data-details]`).forEach((el) => { el.outerHTML = detailsHtml(p); });
+  }, () => {}); // offline: tried again next time it's on screen
 }
 
 function vote(slide, btn) {
@@ -462,7 +456,7 @@ function bindFeed() {
       store.set('feedHintSeen', true);
       feed.querySelectorAll('.slide.hint').forEach((s) => s.classList.remove('hint'));
     }
-    if (pager.scrollLeft > pager.clientWidth / 2) loadDetails(Number(pager.closest('.slide').dataset.i));
+    if (pager.scrollLeft > pager.clientWidth / 2) fetchDetails(Number(pager.closest('.slide').dataset.i));
   }, { capture: true, passive: true });
 
   feed.addEventListener('load', (e) => { if (e.target.matches?.('.shot img')) fit(e.target); }, true);

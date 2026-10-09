@@ -2,6 +2,7 @@
 // and derives category, gender, function features, fibres and materials from the text.
 
 import { classify, department } from './taxonomy.mjs';
+import { normalizeBrand } from './brands.mjs';
 
 // Function keywords (English + Swedish). Categories live in taxonomy.mjs, fibres in FABRICS below.
 const FEATURES = [
@@ -103,7 +104,7 @@ export function normalizeProduct(p) {
     storeBase: p.store.base,
     cart: p.cart, // "shopify" -> cart permalink supported
     title: p.title,
-    brand: p.brand,
+    ...normalizeBrand(p.brand), // brand (display), brandKey (filter), brandLine (sub-line, e.g. "Nike ACG")
     url: p.url,
     productType: p.productType || null,
     category: department(subcategory), // master taxonomy department, e.g. "tops"

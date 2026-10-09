@@ -7,9 +7,9 @@ import {
   loadSelection, saveSelection, selectionParams, isActive, targetColors, attachSwatches,
   matchInfo, loadColorOverrides, colorName, EXCLUDABLE, passesExclude,
 } from './palette-filter.js';
+import { esc, loadFeed } from './shop-utils.js';
 
 const $ = (s) => document.querySelector(s);
-const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const HIDDEN_DEPTS = TAXONOMY.filter((d) => d.hidden).map((d) => d.id);
 
 const sel = loadSelection();
@@ -160,7 +160,7 @@ if (sel.exclude.length || !sel.neutrals || sel.match === 'broad') $('#advanced')
 render();
 bind();
 update();
-Promise.all([fetch('data/products.json').then((r) => r.json()), loadColorOverrides()]).then(([data, overrides]) => {
+Promise.all([loadFeed(), loadColorOverrides()]).then(([data, overrides]) => {
   // Same default as the shop: hidden departments (e.g. gear) aren't counted.
   products = attachSwatches(data.products.filter((p) => !HIDDEN_DEPTS.includes(p.category) && p.available), overrides);
   update();

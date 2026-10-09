@@ -336,3 +336,5 @@ dialog.narrow { width: min(520px, 94vw); }
 .pal-advanced[open] > summary { margin-bottom: 10px; }
 .pal-exclude { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; font-size: 14px; }
 .pal-exclude-label .muted { margin-left: 4px; }
+.brand-search { width: 100%; padding: 7px 10px; margin-bottom: 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+#f-brands-more { margin-top: 8px; font-size: 13px; }

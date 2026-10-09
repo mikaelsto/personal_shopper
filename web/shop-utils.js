@@ -1,6 +1,7 @@
-// Helpers shared by the shop (app.js) and the feed (social/social.js).
+// Helpers shared by the shop (app.js), the palette page (palettes.js) and the feed (social/social.js).
 
 import { label } from './lib/taxonomy.mjs';
+import { decodeProduct, detailsPath } from './lib/feed.mjs';
 
 export const REPO = 'mikaelsto/personal_shopper';
 
@@ -43,3 +44,37 @@ export function historyHtml(h) {
   return `<svg viewBox="0 0 300 60" preserveAspectRatio="none"><polyline fill="none" stroke="var(--accent)" stroke-width="2" points="${pts}"/></svg>
     ${h.map(([d, v]) => `${esc(d)}: ${sek(v)}`).join(' → ')}`;
 }
+
+// ---------- Product data (see scripts/lib/feed.mjs) ----------
+// Paths resolve from this module, so pages in subfolders (social/) find the data too.
+const dataUrl = (path) => new URL(`data/${path}`, import.meta.url);
+let feedVersion = ''; // feed.json's generatedAt: keeps details files from the same build
+
+// -> { generatedAt, products } with every product in the shape of products.json, minus details.
+export async function loadFeed() {
+  const feed = await fetch(dataUrl('feed.json')).then((r) => r.json());
+  feedVersion = feed.generatedAt;
+  return { generatedAt: feed.generatedAt, products: feed.products.map((p) => decodeProduct(p, feed.stores)) };
+}
+
+// Merges a product's description, materials, all photos and price history (p.history) into it,
+// fetched once. Products that already have them (p.details, e.g. loaded live from Shopify) resolve as is.
+const pendingDetails = new Map();
+export function loadDetails(p) {
+  if (p.details) return Promise.resolve(p);
+  if (!pendingDetails.has(p.id)) {
+    pendingDetails.set(p.id, fetch(dataUrl(`${detailsPath(p.id)}?v=${encodeURIComponent(feedVersion)}`))
+      .then((r) => (r.ok ? r.json() : {}))
+      .then((d) => Object.assign(p, {
+        description: d.description ?? '', materials: d.materials ?? [], images: [...p.images.slice(0, 1), ...(d.images ?? [])],
+        history: d.history ?? [], lastSeen: d.lastSeen, details: true,
+      }))
+      .finally(() => pendingDetails.delete(p.id))); // offline: tried again next time
+  }
+  return pendingDetails.get(p.id);
+}
+
+// { productId: "words from its description, store category and materials" }, fetched once.
+let searchWords = null;
+export const loadSearchWords = () => (searchWords ??= fetch(dataUrl(`feed-search.json?v=${encodeURIComponent(feedVersion)}`))
+  .then((r) => r.json()).catch(() => { searchWords = null; return {}; }));

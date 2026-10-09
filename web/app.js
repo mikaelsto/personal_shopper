@@ -1,4 +1,5 @@
-// Personal Shopper front-end. Reads data/products.json + data/stores.json (built by the GitHub job).
+// Personal Shopper front-end. Reads data/feed.json (a slim products.json, see scripts/lib/feed.mjs)
+// + data/stores.json, built by the GitHub job. Details and search words load when needed.
 // Newly added Shopify stores are also fetched live in the browser until the job has added them.
 
 import { TAXONOMY, label } from './lib/taxonomy.mjs';
@@ -10,7 +11,9 @@ import {
   matchingColorways, matchInfo, loadColorOverrides, colorName, EXCLUDABLE, isExcluded, passesExclude,
   voteKey, FEEDBACK_LINES_PER_ISSUE, sendVotes,
 } from './palette-filter.js';
-import { REPO, esc, sek, store, catLabel, displayTitle, thumb, sizeLetter, shortSize, historyHtml } from './shop-utils.js';
+import {
+  REPO, esc, sek, store, catLabel, displayTitle, thumb, sizeLetter, shortSize, historyHtml, loadFeed, loadDetails, loadSearchWords,
+} from './shop-utils.js';
 
 const PAGE = 60;
 // Sourcing labels narrow the fibre choice ("recycled" AND any chosen fibre) instead of widening it.
@@ -24,7 +27,6 @@ let stores = []; // registered stores (data/stores.json) + pending ones added in
 const liveStatus = new Map(); // storeId -> "loading 250…" | "error" while fetching in the browser
 let filtered = [];
 let shown = PAGE;
-let history = null;
 const compare = new Set(store.get('compare', []));
 let colorOverrides = {}; // data/color-names.json
 let palette = loadSelection(); // chosen seasons/colours; filters every category
@@ -34,17 +36,17 @@ let targets = targetColors(palette);
 const votes = store.get('paletteVotes', {});
 
 const state = {
-  q: '', stores: new Set(), category: '', features: new Set(), fabrics: new Set(),
+  q: '', stores: new Set(), category: '', features: new Set(), fabrics: new Set(), brands: new Set(),
   gender: '', size: store.get('size', ''), min: '', max: '', stock: true, sale: false, sort: 'relevance',
 };
 
 init();
 
-const withText = (p) => ({ ...p, _text: `${p.title} ${p.brand} ${p.storeName} ${label(p.category)} ${label(p.subcategory)} ${p.productType ?? ''} ${p.features.join(' ')} ${p.colors.join(' ')} ${p.description}`.toLowerCase() });
+const withText = (p) => ({ ...p, _text: `${p.title} ${p.brand} ${p.brandLine ?? ''} ${p.storeName} ${label(p.category)} ${label(p.subcategory)} ${p.productType ?? ''} ${p.features.join(' ')} ${p.colors.join(' ')} ${p.description}`.toLowerCase() });
 
 async function init() {
   const [data, registered, overrides] = await Promise.all([
-    fetch('data/products.json').then((r) => r.json()),
+    loadFeed(),
     fetch('data/stores.json').then((r) => r.json()).catch(() => []),
     loadColorOverrides(),
   ]);
@@ -106,7 +108,10 @@ function buildFilters() {
 
 function bind() {
   let t;
-  $('#q').addEventListener('input', (e) => { clearTimeout(t); t = setTimeout(() => { state.q = e.target.value.trim().toLowerCase(); apply(); }, 150); });
+  $('#q').addEventListener('input', (e) => {
+    clearTimeout(t);
+    t = setTimeout(() => { state.q = e.target.value.trim().toLowerCase(); if (state.q) addSearchWords(); apply(); }, 150);
+  });
   $('#f-stores').addEventListener('click', (e) => {
     if (e.target.closest('#add-store-btn')) return openAddStore();
     const remove = e.target.closest('[data-remove]');
@@ -115,6 +120,15 @@ function bind() {
   });
   $('#f-features').addEventListener('click', (e) => toggleChip(e, 'feature', state.features));
   $('#f-fabrics').addEventListener('click', (e) => toggleChip(e, 'fabric', state.fabrics));
+  $('#f-brands').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-brand]');
+    if (!b) return;
+    const k = b.dataset.brand;
+    state.brands.has(k) ? state.brands.delete(k) : state.brands.add(k);
+    apply();
+  });
+  $('#f-brand-q').addEventListener('input', () => renderBrandFilter());
+  $('#f-brands-more').addEventListener('click', () => { brandsExpanded = !brandsExpanded; renderBrandFilter(); });
   $('#f-palette').addEventListener('click', (e) => {
     const tile = e.target.closest('[data-season]');
     const rm = e.target.closest('[data-uncolor]');
@@ -170,6 +184,18 @@ function bind() {
   }
 }
 
+// Descriptions aren't in feed.json: the first search fetches their words and adds them to _text.
+let searchWordsAdded = false;
+function addSearchWords() {
+  if (searchWordsAdded) return;
+  searchWordsAdded = true;
+  loadSearchWords().then((words) => {
+    if (!Object.keys(words).length) { searchWordsAdded = false; return; } // offline: next search tries again
+    for (const p of all) if (words[p.id]) p._text += ` ${words[p.id]}`;
+    if (state.q) apply();
+  });
+}
+
 function toggleChip(e, attr, set) {
   const b = e.target.closest(`[data-${attr}]`);
   if (!b) return;
@@ -184,6 +210,8 @@ function reset(run = true) {
   state.stores.clear();
   state.features.clear();
   state.fabrics.clear();
+  state.brands.clear();
+  $('#f-brand-q').value = '';
   $('#q').value = '';
   syncControls();
   if (run) apply();
@@ -305,11 +333,9 @@ function hasFabric(p) {
 }
 const hasSize = (p, size) => p.variants.some((v) => v.available && sizeLetter(v.size) === size);
 
-function apply() {
-  const words = state.q.split(/\s+/).filter(Boolean);
-  const min = Number(state.min) || 0;
-  const max = Number(state.max) || Infinity;
-  filtered = all.filter((p) =>
+// Every filter except Brand; brand counts are computed on this set, so they follow the other filters.
+function matchesExceptBrand(p, words, min, max) {
+  return (
     (!state.stores.size || state.stores.has(p.store)) &&
     inPalette(p) &&
     inCategory(p, state.category) &&
@@ -320,8 +346,17 @@ function apply() {
     (!state.sale || p.compareAt) &&
     (!state.size || hasSize(p, state.size)) &&
     (p.price ?? 0) >= min && (p.price ?? 0) <= max &&
-    words.every((w) => p._text.includes(w)),
+    words.every((w) => p._text.includes(w))
   );
+}
+
+function apply() {
+  const words = state.q.split(/\s+/).filter(Boolean);
+  const min = Number(state.min) || 0;
+  const max = Number(state.max) || Infinity;
+  const base = all.filter((p) => matchesExceptBrand(p, words, min, max));
+  filtered = state.brands.size ? base.filter((p) => state.brands.has(p.brandKey)) : base;
+  renderBrandFilter(base);
 
   const score = (p) => (p.available ? 1 : 0) + (p.title.toLowerCase().includes(state.q) && state.q ? 3 : 0);
   const discount = (p) => (p.compareAt ? 1 - p.price / p.compareAt : 0);
@@ -345,6 +380,33 @@ function apply() {
   render();
 }
 
+
+// ---------- Brand filter ----------
+const BRANDS_SHOWN = 15;
+let brandsExpanded = false;
+let brandBase = [];
+
+function renderBrandFilter(base = brandBase) {
+  brandBase = base;
+  const counts = new Map(); // brandKey -> { name, n }
+  for (const p of base) {
+    if (!p.brandKey) continue;
+    const c = counts.get(p.brandKey) ?? { name: p.brand, n: 0 };
+    c.n++;
+    counts.set(p.brandKey, c);
+  }
+  for (const k of state.brands) if (!counts.has(k)) counts.set(k, { name: all.find((p) => p.brandKey === k)?.brand ?? k, n: 0 });
+  const q = $('#f-brand-q').value.trim().toLowerCase();
+  const list = [...counts].filter(([, c]) => !q || c.name.toLowerCase().includes(q))
+    .sort(([ka, a], [kb, b]) => state.brands.has(kb) - state.brands.has(ka) || b.n - a.n || a.name.localeCompare(b.name, 'sv'));
+  const visible = q || brandsExpanded ? list : list.slice(0, Math.max(BRANDS_SHOWN, state.brands.size));
+  $('#f-brands').innerHTML = visible.map(([k, c]) =>
+    `<button class="chip" data-brand="${esc(k)}" aria-pressed="${state.brands.has(k)}">${esc(c.name)} <span class="n">${c.n}</span></button>`).join('') ||
+    '<span class="muted">No brands match</span>';
+  const more = $('#f-brands-more');
+  more.hidden = !!q || list.length <= BRANDS_SHOWN;
+  more.textContent = brandsExpanded ? 'Show fewer' : `Show all ${list.length} brands`;
+}
 
 function priceHtml(p) {
   return p.compareAt
@@ -398,7 +460,7 @@ function cardHtml(p) {
       ${p.compareAt ? `<span class="badge">−${Math.round((1 - p.price / p.compareAt) * 100)}%</span>` : ''}
       <label class="cmp"><input type="checkbox" ${compare.has(p.id) ? 'checked' : ''}> Compare</label>
       <div class="body">
-        <span class="store">${esc(p.storeName)} · ${esc(p.brand)}</span>
+        <span class="store">${esc(p.storeName)} · ${esc(p.brandLine ?? p.brand)}</span>
         <span class="title">${esc(displayTitle(p))}</span>
         <span class="sub">${esc(catLabel(p))}${p.features.length ? ` · ${esc(p.features.join(', '))}` : ''}</span>
         ${priceHtml(p)}
@@ -422,8 +484,9 @@ function updateCompareBar() {
   $('#compare-bar').hidden = compare.size === 0;
   $('#compare-count').textContent = `${compare.size} selected`;
 }
-function openCompare() {
+async function openCompare() {
   const items = [...compare].map((id) => all.find((p) => p.id === id)).filter(Boolean);
+  await Promise.all(items.map((p) => loadDetails(p).catch(() => p))); // materials + descriptions
   const row = (label, fn) => `<tr><th>${label}</th>${items.map((p) => `<td>${fn(p)}</td>`).join('')}</tr>`;
   $('#compare').innerHTML = `
     <div class="dlg-head"><h2>Compare</h2><button class="close" aria-label="Close">×</button></div>
@@ -457,7 +520,7 @@ async function openDetail(id) {
     <div class="detail">
       <div class="gallery">
         <div class="main"><img id="main-img" src="${esc(thumb(p.images[0], 1000))}" alt=""></div>
-        <div class="thumbs">${p.images.map((src, i) => `<img data-src="${esc(src)}" class="${i ? '' : 'on'}" src="${esc(thumb(src, 150))}" alt="">`).join('')}</div>
+        <div class="thumbs">${thumbsHtml(p)}</div>
       </div>
       <div class="info">
         <div class="muted">${esc(p.brand)} · sold by <strong>${esc(p.storeName)}</strong></div>
@@ -476,12 +539,12 @@ async function openDetail(id) {
           ${lens ? `<a class="btn ghost" href="${esc(lens)}" target="_blank" rel="noopener">Google Lens (image) ↗</a>` : ''}
           <a class="btn ghost" href="${esc(shopping)}" target="_blank" rel="noopener">Google Shopping ↗</a>
         </div>
-        ${p.materials.length ? `<h3>Material</h3><div>${esc(p.materials.join(', '))}</div>` : ''}
+        <div id="d-material"></div>
         <h3>Description</h3>
-        <div class="desc">${esc(p.description) || '–'}</div>
+        <div class="desc">Loading…</div>
         <h3>Price history</h3>
         <div class="history" id="history">Loading…</div>
-        <p class="note">First seen ${esc(p.firstSeen ?? '–')} · last checked ${esc(p.lastSeen ?? p.collectedAt ?? '–')}</p>
+        <p class="note" id="d-seen"></p>
       </div>
     </div>`;
 
@@ -504,15 +567,23 @@ async function openDetail(id) {
     }
   });
   d.querySelector('#add-cart')?.addEventListener('click', (e) => { if (!selected) e.preventDefault(); });
+  d.dataset.id = p.id;
   d.showModal();
 
-  history ??= await fetch('data/price-history.json').then((r) => r.json()).catch(() => ({}));
-  renderHistory(history[p.id] ?? []);
+  try { await loadDetails(p); } catch { $('#history').textContent = 'Could not load the details. Try again in a moment.'; return; }
+  if (d.open && d.dataset.id === p.id) fillDetail(p);
 }
 
-function renderHistory(h) {
-  const el = $('#history');
-  if (el) el.innerHTML = historyHtml(h);
+const thumbsHtml = (p) => p.images.map((src, i) => `<img data-src="${esc(src)}" class="${i ? '' : 'on'}" src="${esc(thumb(src, 150))}" alt="">`).join('');
+
+// The parts that come from the product's details file (all photos, material, description, price history).
+function fillDetail(p) {
+  const d = $('#detail');
+  d.querySelector('.thumbs').innerHTML = thumbsHtml(p);
+  d.querySelector('#d-material').innerHTML = p.materials.length ? `<h3>Material</h3><div>${esc(p.materials.join(', '))}</div>` : '';
+  d.querySelector('.desc').textContent = p.description || '–';
+  d.querySelector('#history').innerHTML = historyHtml(p.history ?? []);
+  d.querySelector('#d-seen').textContent = `First seen ${p.firstSeen ?? '–'} · last checked ${p.lastSeen ?? p.collectedAt ?? '–'}`;
 }
 
 // ---------- Add store ----------
@@ -604,7 +675,7 @@ async function loadLive(s) {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const { products } = await res.json();
       if (!products?.length) break;
-      fetched.push(...attachSwatches(products.filter((p) => !isGiftCard(p)).map((p) => withText({ ...fromShopify(s, p), live: true })), colorOverrides));
+      fetched.push(...attachSwatches(products.filter((p) => !isGiftCard(p)).map((p) => withText({ ...fromShopify(s, p), live: true, details: true })), colorOverrides));
     }
     liveStatus.delete(s.id);
   } catch (err) {

@@ -1,5 +1,5 @@
 // Local preview on http://localhost:8080 — serves web/, data/ and scripts/lib/ live (no rebuild needed).
-// The feed's data (data/feed.json, data/feed/…) is built on the fly from data/products.json.
+// The slim data (data/feed.json, data/feed/…, data/feed-search.json) is built on the fly from data/products.json.
 import { createServer } from 'node:http';
 import { readFile, stat } from 'node:fs/promises';
 import { extname, join, normalize } from 'node:path';
@@ -23,8 +23,8 @@ async function feedFile(path) {
   const stamp = (await Promise.all(files.map((f) => stat(f)))).map((s) => s.mtimeMs).join();
   if (feedCache?.stamp !== stamp) {
     const [{ products, generatedAt }, history] = await Promise.all(files.map(async (f) => JSON.parse(await readFile(f, 'utf8'))));
-    const { feed, details } = buildFeed(products, history, generatedAt);
-    feedCache = { stamp, files: new Map([['feed.json', feed], ...details]) };
+    const { feed, details, search } = buildFeed(products, history, generatedAt);
+    feedCache = { stamp, files: new Map([['feed.json', feed], ['feed-search.json', search], ...details]) };
   }
   const data = feedCache.files.get(path.slice('/data/'.length));
   if (!data) throw new Error('Not found');
@@ -35,7 +35,7 @@ createServer(async (req, res) => {
   const path = normalize(decodeURIComponent(new URL(req.url, 'http://x').pathname)).replace(/^(\.\.[/\\])+/, '');
   const file = resolve(path);
   try {
-    const body = /^\/data\/feed[./]/.test(path) ? await feedFile(path) : await readFile(file);
+    const body = /^\/data\/feed[-./]/.test(path) ? await feedFile(path) : await readFile(file);
     res.writeHead(200, { 'Content-Type': types[extname(file)] ?? 'application/octet-stream', 'Cache-Control': 'no-store' });
     res.end(body);
   } catch {

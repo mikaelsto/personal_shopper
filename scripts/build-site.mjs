@@ -2,7 +2,7 @@
 //   web/*                   -> _site/
 //   data/*.json (public)    -> _site/data/
 //   scripts/lib (browser)   -> _site/lib/   (shared taxonomy, Shopify mapping, colours/palettes)
-//   slim feed for social/   -> _site/data/feed.json + _site/data/feed/<store>/<id>.json
+//   slim product data       -> _site/data/feed.json, feed/<store>/<id>.json, feed-search.json
 import { cp, rm, mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -12,7 +12,7 @@ const root = fileURLToPath(new URL('..', import.meta.url));
 const out = `${root}_site`;
 
 export const DATA_FILES = ['products.json', 'price-history.json', 'meta.json', 'stores.json', 'color-names.json'];
-export const BROWSER_LIBS = ['normalize.mjs', 'taxonomy.mjs', 'shopify-map.mjs', 'colors.mjs', 'palettes.mjs', 'palette-match.mjs', 'feed.mjs'];
+export const BROWSER_LIBS = ['normalize.mjs', 'brands.mjs', 'taxonomy.mjs', 'shopify-map.mjs', 'colors.mjs', 'palettes.mjs', 'palette-match.mjs', 'feed.mjs'];
 
 await rm(out, { recursive: true, force: true });
 await mkdir(`${out}/data`, { recursive: true });
@@ -23,8 +23,9 @@ for (const f of BROWSER_LIBS) await cp(`${root}scripts/lib/${f}`, `${out}/lib/${
 
 const readData = async (f) => JSON.parse(await readFile(`${root}data/${f}`, 'utf8'));
 const [{ products, generatedAt }, history] = await Promise.all([readData('products.json'), readData('price-history.json')]);
-const { feed, details } = buildFeed(products, history, generatedAt);
+const { feed, details, search } = buildFeed(products, history, generatedAt);
 await writeFile(`${out}/data/feed.json`, JSON.stringify(feed));
+await writeFile(`${out}/data/feed-search.json`, JSON.stringify(search));
 for (const dir of new Set(details.map(([path]) => dirname(path)))) await mkdir(`${out}/data/${dir}`, { recursive: true });
 await Promise.all(details.map(([path, d]) => writeFile(`${out}/data/${path}`, JSON.stringify(d))));
 
