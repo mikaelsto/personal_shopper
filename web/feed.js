@@ -911,7 +911,7 @@ function savedHtml() {
       <h3>No saved products yet</h3>
       <p class="hint">Tap ♥ on a product to save it here. ${account ? 'Your list is kept in your account.' : 'The list is kept in this browser for 30 days after your last visit, no account needed.'}</p>
     </section>
-    ${accountHtml()}`;
+    ${accountHtml()}${cookiesHtml()}`;
   const row = (x) => {
     const p = byId.get(x.id);
     const i = p ? filtered.indexOf(p) : -1;
@@ -941,7 +941,7 @@ function savedHtml() {
       <ul class="saved-list">${savedList.map(row).join('')}</ul>
       ${account ? '' : '<p class="hint">Kept in this browser on this device for 30 days after your last visit.</p>'}
     </section>
-    ${accountHtml()}`;
+    ${accountHtml()}${cookiesHtml()}`;
 }
 
 // Signing in (an emailed link, no password) keeps ♥ and votes in your account, on every device.
@@ -968,6 +968,16 @@ function accountHtml() {
         <button class="btn primary" ${sending ? 'disabled' : ''}>${sending ? 'Sending…' : 'Email me a link'}</button>
       </form>
       ${signInUi.error ? `<p class="hint error" role="alert">${esc(signInUi.error)}</p>` : ''}
+    </section>`;
+}
+
+// data-consent opens the cookie banner again (consent.js).
+function cookiesHtml() {
+  return `
+    <section class="group">
+      <h3>Cookies</h3>
+      <p class="hint">Google Analytics cookies, only if you accept them. Nothing is used for ads.</p>
+      <button class="link" data-consent>Cookie settings</button>
     </section>`;
 }
 
