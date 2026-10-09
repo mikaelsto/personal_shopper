@@ -2,9 +2,12 @@
 // TikTok) and drag the photo left for its details. The photo's footer is the navigation: ☰ opens
 // a layer with saved products (♥), colours, categories (and stores) and sizes. Same data, palette matching and
 // unchecked stores as the grid (grid.html).
-// The product page opens in a new tab, from the photo or the "To the product page" link.
+// The product page opens in a new tab, from the photo or the "Shop now at <store>" button.
 // This is the start page: the Rust build (site/) pre-renders its first products into index.html,
 // and rebuild() takes them over (keeping their photos) once the feed has loaded.
+// Every product also has its own page (p/<store>/<slug>-<id>, written by the build): the same
+// feed, starting with that product and followed by more like it. The address bar follows the
+// product on screen, so a copied link or a reload brings you back to it.
 
 import { TAXONOMY, label } from './lib/taxonomy.mjs';
 import { fabricLabel } from './lib/normalize.mjs';
@@ -17,6 +20,8 @@ import {
   esc, sek, store, catLabel, displayTitle, thumb, srcset, sizeLetter, shortSize, historyHtml, loadFeed, loadDetails,
   loadHiddenStores, saveHiddenStores, approx, localPrice, loadSaved, isSaved, toggleSaved,
 } from './shop-utils.js';
+import { productPath, fullName } from './lib/feed.mjs';
+import { hexToLab } from './lib/colors.mjs';
 import { account, linkError, cameFromLink, startSync, syncSaved, syncVote, signIn, signOut } from './sync.js';
 
 const BATCH = 6; // slides added at a time, a few ahead of the one on screen
@@ -29,6 +34,7 @@ const ICON = {
   left: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>',
   down: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>',
   out: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 16L17 7M9 7h8v8"/></svg>',
+  share: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V4M8 8l4-4 4 4M5 12v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/></svg>',
   heart: '<svg class="heart" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20s-7.5-4.6-9.3-9.2C1.4 7.4 3.6 4 7 4c2.1 0 3.6 1.2 5 3 1.4-1.8 2.9-3 5-3 3.4 0 5.6 3.4 4.3 6.8C19.5 15.4 12 20 12 20z"/></svg>',
 };
 
@@ -85,6 +91,8 @@ const voteOf = (p) => votes[`${p.id} ${voteKey(palette)}`]?.v ?? 0;
 let savedList = loadSaved(); // ♥ products, shared with the shop
 let signInUi = { step: '', email: '', error: linkError ? `The sign-in link didn't work: ${linkError}` : '' }; // Saved tab
 const byId = new Map();
+// On a product's own page: that product first, until you change the filters.
+let pinned = document.querySelector('meta[name="product"]')?.content ?? null;
 
 // Shared links: ?cat=tops/t-shirts&for=men&size=M,US9.5,EU42 (palette params are handled by palette-filter.js).
 function readUrl() {
@@ -141,12 +149,44 @@ function apply() {
   filtered.sort(targets.length
     ? (a, b) => group(a) - group(b) || Math.floor(a._pm.dE / 4) - Math.floor(b._pm.dE / 4) || a._rnd - b._rnd
     : (a, b) => a._rnd - b._rnd);
+  const first = pinned && byId.get(pinned);
+  if (first) {
+    // It's shown even when sold out or outside your filters (you came for it), then the same kind first.
+    const alike = (p) => p.subcategory === first.subcategory && (first.gender === 'unisex' || p.gender === first.gender || p.gender === 'unisex');
+    const rest = filtered.filter((p) => p !== first);
+    filtered = [first, ...rest.filter(alike), ...rest.filter((p) => !alike(p))];
+  }
 }
 
 // ---------- Init ----------
 const $ = (s, el = document) => el.querySelector(s);
 const feed = $('#feed');
 const sheet = $('#sheet');
+
+// ---------- Opening card ----------
+// Before the first product until you've swiped past it once (never on a product's own page).
+// Its two questions set the same filters as the navigation layer.
+let intro = $('#intro');
+if (intro && (pinned || store.get('introSeen', false))) { intro.remove(); intro = null; }
+let introGenderPicked = false; // "Both" is only marked once you've picked it
+const introCount = (n) => (n < 1000 ? String(n) : (Math.floor(n / 1000) * 1000).toLocaleString('en-US'));
+function renderIntro() {
+  if (!intro) return;
+  const box = $('#intro-seasons', intro);
+  if (!box.childElementCount) {
+    box.innerHTML = FAMILIES.map((f) => `<div class="intro-row">${PALETTES.filter((p) => p.family === f.id).map((p) =>
+      `<button class="intro-season" data-intro-season="${esc(p.id)}" aria-pressed="false">
+        <span class="strip">${p.colors.map((c) => `<i style="background:${esc(c.hex)}"></i>`).join('')}</span>${esc(p.label)}</button>`).join('')}</div>`).join('');
+  }
+  intro.querySelectorAll('[data-intro-season]').forEach((b) => b.setAttribute('aria-pressed', palette.palettes.includes(b.dataset.introSeason)));
+  intro.querySelectorAll('[data-intro-gender]').forEach((b) => b.setAttribute('aria-pressed',
+    (introGenderPicked || state.gender) && state.gender === b.dataset.introGender));
+  if (all.length) {
+    $('[data-count="stores"]', intro).textContent = new Set(filtered.map((p) => p.store)).size;
+    $('[data-count="pieces"]', intro).textContent = introCount(filtered.length);
+  }
+}
+renderIntro();
 
 init();
 
@@ -190,6 +230,8 @@ const io = new IntersectionObserver((entries) => {
     const slide = e.target;
     if (e.intersectionRatio >= 0.6) {
       current = Number(slide.dataset.i);
+      if (intro) store.set('introSeen', true);
+      syncUrl();
       if (current >= rendered - 3) appendBatch();
       fetchDetails(current);
       fetchDetails(current + 1);
@@ -213,6 +255,8 @@ function rebuild() {
   current = 0;
   footer = footerHtml();
   feed.innerHTML = filtered.length ? '' : emptyHtml();
+  if (intro) feed.prepend(intro);
+  renderIntro();
   appendBatch();
   if (same) {
     for (const [i, s] of pre.entries()) {
@@ -231,6 +275,34 @@ function appendBatch() {
   feed.insertAdjacentHTML('beforeend', html + (end === filtered.length ? endHtml() : ''));
   feed.querySelectorAll('.slide[data-i]:not([data-seen])').forEach((s) => { s.dataset.seen = ''; io.observe(s); });
   rendered = end;
+}
+
+// The start page stays "/" on its first product; after that the address is the product on screen.
+function syncUrl() {
+  const p = filtered[current];
+  const path = p && (current > 0 || pinned) ? `/${productPath(p)}` : '/';
+  if (path !== location.pathname) history.replaceState(null, '', path + location.search);
+}
+
+async function share(p) {
+  const url = `${location.origin}/${productPath(p)}`;
+  if (navigator.share) {
+    try { await navigator.share({ title: fullName(p), url }); } catch {} // cancelled
+    return;
+  }
+  try { await navigator.clipboard.writeText(url); } catch { return prompt('Link to this product', url); }
+  const tip = document.createElement('div');
+  tip.className = 'toast';
+  tip.setAttribute('role', 'status');
+  tip.textContent = 'Link copied';
+  document.body.append(tip);
+  setTimeout(() => tip.remove(), 1800);
+}
+
+// The dot under the photo you're on.
+function showShot(shots) {
+  const k = Math.round(shots.scrollLeft / shots.clientWidth);
+  shots.parentElement.querySelectorAll('.shot-dots i').forEach((d, j) => d.classList.toggle('on', j === k));
 }
 
 const slideAt = (i) => feed.querySelector(`.slide[data-i="${i}"]`);
@@ -269,28 +341,83 @@ function stockSizesHtml(p, max = 8) {
     (list.length > max ? ` · +${list.length - max}` : '');
 }
 
+// The background behind the photo: a light tint of the product's colour (packshots on white blend
+// into it, see .media in feed.css).
+function tint(p) {
+  const hex = p._swatches?.[0]?.hex;
+  if (!hex) return '';
+  const dark = parseInt(hex.slice(1, 3), 16) + parseInt(hex.slice(3, 5), 16) + parseInt(hex.slice(5, 7), 16) < 150;
+  return ` style="--tint: color-mix(in oklab, ${esc(hex)} ${dark ? 16 : 30}%, #f4f4f2)"`;
+}
+
+// Swedish stores' colour words (Passa Sports, Löplabbet), for an English page.
+const SWEDISH = {
+  svart: 'black', vit: 'white', grå: 'grey', ljusgrå: 'light grey', mörkgrå: 'dark grey', blå: 'blue', ljusblå: 'light blue',
+  mörkblå: 'navy', marinblå: 'navy', röd: 'red', mörkröd: 'dark red', rosa: 'pink', grön: 'green', mörkgrön: 'dark green',
+  ljusgrön: 'light green', gul: 'yellow', lila: 'purple', brun: 'brown', turkos: 'turquoise', guld: 'gold', flerfärgad: 'multicolour',
+  vinröd: 'burgundy', ljuslila: 'lilac', royalblå: 'royal blue', ljusrosa: 'light pink', ljusbrun: 'light brown', bordeaux: 'burgundy',
+  rödbrun: 'red-brown', korall: 'coral', olivgrön: 'olive', sand: 'sand', benvit: 'off-white', petrol: 'petrol', silver: 'silver',
+};
+
+// The colour as a person would say it: the store's name without stock codes ("Red 5007
+// Owrsi30c5007" -> "Red", "Svart/Svart" -> "Svart"), or one read from the colour itself where the
+// store's is a code (adidas: "Lucpnk/Purbur/Blilil").
+function colourLabel(p) {
+  const raw = p.colors.length === 1 ? p.colors[0] : '';
+  const code = p.brandKey === 'adidas' && /^[A-Z][a-z]{4,5}([/-][A-Z][a-z]{4,5})+$/.test(raw.replace(/\s/g, ''));
+  let s = code ? '' : [...new Set(raw.split(/\s*\/\s*/).map((part) =>
+    part.split(/\s+/).filter((w) => !/[\d.]/.test(w)).map((w) => SWEDISH[w.toLowerCase()] ?? w).join(' ')).filter(Boolean))].join(' / ');
+  if (!s || s.length > 32) s = p._swatches?.length ? plainColour(p._swatches[0].hex) : '';
+  return s === s.toUpperCase() ? s.toLowerCase().replace(/(^|[\s/-])\p{L}/gu, (c) => c.toUpperCase()) : s;
+}
+
+// "pink", "dark green", "light grey": a plain name for a colour, from its lightness and hue (CIELAB).
+function plainColour(hex) {
+  const [L, a, b] = hexToLab(hex);
+  const C = Math.hypot(a, b), h = ((Math.atan2(b, a) * 180) / Math.PI + 360) % 360;
+  if (C < 8) return L < 20 ? 'black' : L > 90 ? 'white' : L < 45 ? 'dark grey' : L > 72 ? 'light grey' : 'grey';
+  if (L < 32 && h > 230 && h < 320) return 'navy';
+  if (h > 40 && h < 100 && C < 32) return L < 50 ? 'brown' : L > 80 ? 'cream' : 'beige';
+  const hue = h < 22 || h >= 330 ? (L < 40 ? 'burgundy' : 'pink') : h < 50 ? (L > 72 ? 'pink' : 'red') : h < 75 ? (L < 50 ? 'brown' : 'orange')
+    : h < 100 ? 'yellow' : h < 165 ? 'green' : h < 215 ? 'teal' : h < 290 ? 'blue' : 'purple';
+  return L < 35 && !['navy', 'brown', 'burgundy'].includes(hue) ? `dark ${hue}` : L > 82 && hue !== 'pink' ? `light ${hue}` : hue;
+}
+
+const genderHtml = (p) => ({ women: '<span class="for">Women</span>', men: '<span class="for">Men</span>' }[p.gender] ?? '');
+
+// One photo of the carousel; the first is the main one (the build's choice: worn, if one is).
+function shotHtml(p, src, i, k = 0) {
+  const set = k === 0 ? srcset(src) : '';
+  const load = k === 0 && i < 2 ? 'fetchpriority="high"' : 'loading="lazy"';
+  return `<div class="shot"><img src="${esc(thumb(src, 1080))}" ${set ? `srcset="${esc(set)}" sizes="(min-width: 900px) 57vw, 100vw"` : ''} alt="${k === 0 ? esc(p.name) : ''}" draggable="false" ${load}></div>`;
+}
+const moreShotsHtml = (p) => p.images.slice(1).map((src, k) => shotHtml(p, src, 1, k + 1)).join('');
+const shotDotsHtml = (p) => (p.images.length > 1
+  ? `<span class="shot-dots" aria-hidden="true">${p.images.map((_, k) => `<i class="${k ? '' : 'on'}"></i>`).join('')}</span>` : '');
+
 function slideHtml(p, i) {
-  const img = p.images[0];
-  const title = displayTitle(p);
+  const title = p.name;
   const pos = `${i + 1} / ${filtered.length}`;
   const m = p._pm;
   const hint = i === 0 && !wide.matches && !store.get('feedHintSeen', false);
+  const colour = colourLabel(p);
   return `
-  <article class="slide ${hint ? 'hint' : ''}" data-i="${i}" data-id="${esc(p.id)}" aria-roledescription="product" aria-label="${esc(title)}, ${pos}">
+  <article class="slide ${hint ? 'hint' : ''} ${p.worn ? 'worn' : ''}" data-i="${i}" data-id="${esc(p.id)}" aria-roledescription="product" aria-label="${esc(title)}, ${pos}"${tint(p)}>
     <div class="pager">
       <section class="pane media">
-        <a class="shot" href="${esc(p.url)}" target="_blank" rel="noopener" draggable="false" title="To the product page at ${esc(p.storeName)}">
-          <img src="${esc(thumb(img, 1080))}" ${srcset(img) ? `srcset="${esc(srcset(img))}" sizes="(min-width: 900px) 57vw, 100vw"` : ''} alt="${esc(title)}" draggable="false" ${i < 2 ? 'fetchpriority="high"' : 'loading="lazy"'}>
-        </a>
-        <span class="pos" aria-hidden="true">${pos}</span>
+        <div class="shots">${shotHtml(p, p.images[0], i)}${p.details ? moreShotsHtml(p) : ''}</div>
+        ${p.details ? shotDotsHtml(p) : ''}
+        <a class="wordmark" href="/" aria-label="Runnista, start page">runnista</a>
         <button class="peek" data-action="details" aria-label="Product details">${ICON.left}</button>
+        <button class="share" data-action="share" aria-label="Share">${ICON.share}</button>
         ${saveBtnHtml(p, 'save')}
-        ${hint ? '<span class="coach" aria-hidden="true">Drag the photo left for details</span>' : ''}
+        ${hint ? '<span class="coach" aria-hidden="true">Swipe sideways for more photos and details</span>' : ''}
         <div class="caption">
-          <p class="who"><span class="store-tag">${esc(p.storeName)}</span>${esc(p.brand)}</p>
+          <p class="who"><span class="store-tag">${esc(p.storeName)}</span>${esc(p.brand)}${genderHtml(p)}</p>
           <h2 class="title">${esc(title)}</h2>
           <p class="price-row">${priceHtml(p)}</p>
-          <p class="meta">${dotsHtml(p)}${m ? `<span class="match">≈ ${esc(m.target.name)}</span>` : ''}<span class="stock">${stockSizesHtml(p)}</span></p>
+          <p class="meta">${dotsHtml(p, 1)}${colour ? `<span class="colour">${esc(colour)}</span>` : ''}${m ? `<span class="match">≈ ${esc(m.target.name)}</span>` : ''}<span class="stock">${stockSizesHtml(p)}</span></p>
+          <a class="buy" href="${esc(p.url)}" target="_blank" rel="noopener">Shop now at ${esc(p.storeName)} ${ICON.out}</a>
         </div>
         ${footer}
       </section>
@@ -315,14 +442,13 @@ function infoHtml(p, pos) {
   return `
     <header class="info-top">
       <button class="back" data-action="photo">${ICON.left}Photo</button>
-      <span class="pos">${pos}</span>
       ${saveBtnHtml(p, 'save small')}
     </header>
     <p class="who"><span class="store-tag">${esc(p.storeName)}</span>${esc(p.brand)}</p>
-    <h2 class="info-title">${esc(displayTitle(p))}</h2>
+    <h2 class="info-title">${esc(p.name)}</h2>
     <p class="price-row big">${priceHtml(p)}</p>
     ${p.local ? `<p class="note">${esc(localPrice(p))}</p>` : ''}
-    <a class="cta" href="${esc(p.url)}" target="_blank" rel="noopener">To the product page ${ICON.out}</a>
+    <a class="cta" href="${esc(p.url)}" target="_blank" rel="noopener">Shop now at ${esc(p.storeName)} ${ICON.out}</a>
 
     ${p._swatches?.length || p.colors.length ? `<section>
       <h3>Colour</h3>
@@ -436,11 +562,7 @@ function detailsHtml(p) {
   return `<div class="details">
     ${p.materials.length ? `<p class="materials">${esc(p.materials.join(', '))}</p>` : ''}
     ${p.description ? `<p class="desc">${esc(p.description)}</p>` : ''}
-    ${p.images.length > 1 ? `<section>
-      <h3>More photos</h3>
-      <div class="photos">${p.images.slice(1).map((src) =>
-        `<a href="${esc(p.url)}" target="_blank" rel="noopener" draggable="false"><img src="${esc(thumb(src, 400))}" alt="" loading="lazy" draggable="false"></a>`).join('')}</div>
-    </section>` : ''}
+    ${p.name !== p.title ? `<p class="note">At ${esc(p.storeName)}: ${esc(displayTitle(p))}</p>` : ''}
     <section>
       <h3>Price history</h3>
       <div class="history">${historyHtml(p.history ?? [])}</div>
@@ -455,6 +577,11 @@ function fetchDetails(i) {
   if (!p || p.details) return;
   loadDetails(p).then(() => {
     feed.querySelectorAll(`.slide[data-id="${CSS.escape(p.id)}"] [data-details]`).forEach((el) => { el.outerHTML = detailsHtml(p); });
+    feed.querySelectorAll(`.slide[data-id="${CSS.escape(p.id)}"] .shots`).forEach((el) => {
+      if (el.childElementCount > 1 || p.images.length < 2) return;
+      el.insertAdjacentHTML('beforeend', moreShotsHtml(p));
+      el.insertAdjacentHTML('afterend', shotDotsHtml(p));
+    });
   }, () => {}); // offline: tried again next time it's on screen
 }
 
@@ -512,8 +639,13 @@ function bindFeed() {
   feed.addEventListener('click', (e) => {
     if (suppressClick) { suppressClick = false; e.preventDefault(); e.stopPropagation(); return; }
     const slide = e.target.closest('.slide');
-    const t = e.target.closest('[data-action], [data-sheet], [data-save], [data-vote], .size[data-variant], .cart[aria-disabled]');
+    const t = e.target.closest('[data-action], [data-sheet], [data-save], [data-vote], .size[data-variant], .cart[aria-disabled], [data-intro-gender], [data-intro-season]');
     if (!t) return;
+    if (t.dataset.introGender != null) { introGenderPicked = true; return setFilters({ gender: t.dataset.introGender }); }
+    if (t.dataset.introSeason) {
+      const ids = palette.palettes, id = t.dataset.introSeason;
+      return setPalette({ palettes: ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id] });
+    }
     if (t.matches('.cart')) return e.preventDefault();
     if (t.dataset.sheet != null) return openSheet(t.dataset.sheet || state.tab);
     if (t.dataset.save) return save(t.dataset.save);
@@ -523,12 +655,15 @@ function bindFeed() {
     if (action === 'details') showDetails(slide);
     else if (action === 'photo') showPhoto(slide);
     else if (action === 'next') goTo(Number(slide.dataset.i) + 1);
+    else if (action === 'intro-go') goTo(0);
+    else if (action === 'share') share(filtered[Number(slide.dataset.i)]);
     else if (action === 'top') feed.scrollTo({ top: 0, behavior: motion() });
     else if (action === 'clear') clearAll();
   }, true);
 
   // Scroll events don't bubble, but they can be caught on the way down.
   feed.addEventListener('scroll', (e) => {
+    if (e.target.classList?.contains('shots')) return showShot(e.target);
     const pager = e.target;
     if (!pager.classList?.contains('pager') || pager.scrollLeft < 20) return;
     if (!store.get('feedHintSeen', false)) {
@@ -544,36 +679,73 @@ function bindFeed() {
   addEventListener('resize', () => { clearTimeout(t); t = setTimeout(() => feed.querySelectorAll('.shot img').forEach(fit), 150); });
   wide.addEventListener('change', () => feed.querySelectorAll('.pager').forEach((p) => { p.scrollLeft = 0; }));
 
-  // Mouse: drag the photo sideways like a finger would (touch and trackpads scroll natively).
+  // Mouse: drag the photo sideways like a finger would (touch and trackpads scroll natively):
+  // through the photos, then on to the details.
   let drag = null;
+  let dragged = false; // the last pointerup ended a drag, not a tap
   feed.addEventListener('pointerdown', (e) => {
-    if (e.pointerType !== 'mouse' || e.button !== 0 || wide.matches) return;
+    dragged = false;
+    if (e.pointerType !== 'mouse' || e.button !== 0) return;
     const pane = e.target.closest('.media');
-    if (!pane || e.target.closest('button')) return;
-    const pager = pane.parentElement;
-    drag = { pager, x: e.clientX, left: pager.scrollLeft, moved: false, id: e.pointerId };
+    if (!pane || e.target.closest('button, a')) return;
+    drag = { shots: $('.shots', pane), pager: pane.parentElement, x: e.clientX, moved: false, id: e.pointerId };
   });
   feed.addEventListener('pointermove', (e) => {
     if (!drag) return;
     const dx = e.clientX - drag.x;
-    if (!drag.moved && Math.abs(dx) < 6) return;
-    if (!drag.moved) { drag.moved = true; drag.pager.classList.add('dragging'); drag.pager.setPointerCapture(drag.id); }
-    drag.pager.scrollLeft = drag.left - dx;
+    if (!drag.moved) {
+      if (Math.abs(dx) < 6) return;
+      // The photos while there are more that way, else the pager (photo ↔ details).
+      const { shots } = drag;
+      const more = dx < 0 ? shots.scrollLeft + shots.clientWidth < shots.scrollWidth - 2 : shots.scrollLeft > 2;
+      const el = more ? shots : wide.matches ? null : drag.pager;
+      if (!el) { drag = null; return; }
+      Object.assign(drag, { el, left: el.scrollLeft, moved: true });
+      el.classList.add('dragging');
+      el.setPointerCapture(drag.id);
+    }
+    drag.el.scrollLeft = drag.left - dx;
   });
   const endDrag = (e) => {
     if (!drag) return;
-    const { pager, moved, x, left } = drag;
+    const { el, moved, x, left } = drag;
     drag = null;
     if (!moved) return;
+    dragged = true;
     suppressClick = e.type === 'pointerup';
-    const w = pager.clientWidth;
+    const w = el.clientWidth;
     const dx = e.clientX - x;
-    pager.scrollTo({ left: dx < -w * 0.15 ? w : dx > w * 0.15 ? 0 : Math.round(left / w) * w, behavior: motion() });
-    setTimeout(() => pager.classList.remove('dragging'), 450);
+    const page = Math.round(left / w) + (dx < -w * 0.15 ? 1 : dx > w * 0.15 ? -1 : 0);
+    el.scrollTo({ left: Math.max(0, Math.min(page, Math.round(el.scrollWidth / w) - 1)) * w, behavior: motion() });
+    setTimeout(() => el.classList.remove('dragging'), 450);
     setTimeout(() => { suppressClick = false; }, 0);
   };
   feed.addEventListener('pointerup', endDrag);
   feed.addEventListener('pointercancel', endDrag);
+
+  // Double-tap a photo to ♥ it, as on Instagram (only ever saves; the ♥ button takes it off).
+  // A swipe ends in pointercancel, not pointerup, so only taps count.
+  let lastTap = null;
+  feed.addEventListener('pointerup', (e) => {
+    if (dragged || !e.target.closest('.shots')) return;
+    const near = lastTap && e.timeStamp - lastTap.t < 320 && Math.hypot(e.clientX - lastTap.x, e.clientY - lastTap.y) < 40;
+    if (!near) { lastTap = { t: e.timeStamp, x: e.clientX, y: e.clientY }; return; }
+    lastTap = null;
+    const id = e.target.closest('.slide')?.dataset.id;
+    if (!id) return;
+    if (!isSaved(savedList, id)) save(id);
+    navigator.vibrate?.(12);
+    const pane = e.target.closest('.media');
+    const box = pane.getBoundingClientRect();
+    const burst = document.createElement('span');
+    burst.className = 'burst';
+    burst.innerHTML = ICON.heart;
+    burst.style.left = `${e.clientX - box.left}px`;
+    burst.style.top = `${e.clientY - box.top}px`;
+    pane.append(burst);
+    burst.addEventListener('animationend', () => burst.remove());
+    setTimeout(() => burst.remove(), 1200); // reduced motion: no animationend
+  });
 
   document.addEventListener('keydown', (e) => {
     if (sheet.open || e.altKey || e.ctrlKey || e.metaKey || e.target.closest?.('input, select, textarea')) return;
@@ -713,6 +885,7 @@ function clearAll() {
 
 // Filters apply live (the count on the button follows); the feed is rebuilt when the layer closes.
 function changed() {
+  pinned = null;
   apply();
   if (sheet.open) { dirty = true; renderSheet(); } else rebuild();
 }
@@ -744,11 +917,11 @@ function savedHtml() {
     const status = !p ? 'No longer listed' : !p.available ? 'Sold out' : '';
     const price = p ? `${approx(p)}${sek(p.price)}${p.compareAt ? ` <s>${sek(p.compareAt)}</s>` : ''}` : sek(x.price);
     return `<li class="saved-row ${status ? 'gone' : ''}">
-      <a class="saved-link" href="${esc(p?.url ?? x.url)}" target="_blank" rel="noopener" title="To the product page at ${esc(p?.storeName ?? x.storeName)}">
+      <a class="saved-link" href="${esc(p?.url ?? x.url)}" target="_blank" rel="noopener" title="Shop now at ${esc(p?.storeName ?? x.storeName)}">
         <img src="${esc(thumb(p?.images[0] ?? x.image, 200))}" alt="" loading="lazy">
         <span class="saved-text">
           <span class="who"><span class="store-tag">${esc(p?.storeName ?? x.storeName)}</span>${esc(p?.brand ?? x.brand)}</span>
-          <span class="saved-title">${esc(p ? displayTitle(p) : x.title)}</span>
+          <span class="saved-title">${esc(p ? p.name : x.title)}</span>
           <span class="saved-price ${p?.compareAt ? 'sale' : ''}">${price}${status ? ` · <em>${status}</em>` : ''}</span>
         </span>
       </a>

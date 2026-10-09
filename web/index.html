@@ -13,14 +13,19 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="icon-180.png">
-  <!-- The Rust build (site/) puts this stylesheet inline and adds preloads for the scripts and feed.json. -->
+  <!-- The Rust build (site/) puts this stylesheet inline (not on product pages) and adds preloads for the scripts and feed.json. -->
+  <link rel="preload" href="fonts/barlow-condensed-800.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="feed.css" data-inline>
   <script>
     // The build pre-renders the first products of the default feed (no filters) into #feed, so
     // they show before any script or data has loaded. With your own filters (in the link or saved
     // in this browser) they'd be the wrong products: hide them and show the spinner instead.
+    // A product's own page (/p/…) always starts with its product, whatever your filters.
+    // The opening card (#intro) shows until you've swiped past it once.
     (() => {
       const get = (k) => { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } };
+      if (get('introSeen')) document.documentElement.classList.add('no-intro');
+      if (location.pathname.startsWith('/p/')) return;
       const q = new URLSearchParams(location.search);
       const f = get('feedFilters') ?? {}, pal = get('paletteSelection') ?? {};
       const custom = ['cat', 'for', 'size', 'palette', 'color', 'exclude'].some((k) => q.get(k))
@@ -32,7 +37,32 @@
 </head>
 <body>
   <!-- One product per screen: swipe up for the next, drag the photo left for its details. -->
-  <main id="feed" class="feed" aria-label="Products"><!--prerender--></main>
+  <main id="feed" class="feed" aria-label="Products"><!--intro-->
+    <!-- Opening card, before the first product: what this is, and two quick questions that set
+         the same filters as the navigation layer. The build fills in the counts, feed.js keeps
+         them up to date with your answers. Not on product pages (the build leaves it out). -->
+    <article id="intro" class="slide intro" aria-label="Welcome to Runnista">
+      <div class="intro-card">
+        <p class="intro-mark">runnista</p>
+        <h1 class="intro-head"><span><span data-count="stores"><!--stores--></span> stores.</span>
+          <span><span data-count="pieces"><!--pieces--></span> running pieces.</span></h1>
+        <section class="intro-q">
+          <h2>Looking for</h2>
+          <div class="seg" role="group" aria-label="Looking for">
+            <button data-intro-gender="women" aria-pressed="false">Women's</button>
+            <button data-intro-gender="men" aria-pressed="false">Men's</button>
+            <button data-intro-gender="" aria-pressed="false">Both</button>
+          </div>
+        </section>
+        <section class="intro-q">
+          <h2>Your colour palette <span class="muted">· optional</span></h2>
+          <div id="intro-seasons" class="intro-seasons"></div>
+          <a class="intro-link" href="palettes.html">Not sure? See every season's colours ↗</a>
+        </section>
+        <button class="intro-go" data-action="intro-go">Swipe up
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg></button>
+      </div>
+    </article><!--/intro--><!--prerender--></main>
 
   <div id="loading" class="loading" role="status">
     <span class="spinner" aria-hidden="true"></span>

@@ -2,7 +2,7 @@
 // The slim data (data/feed.json, data/feed/…, data/feed-search.json) comes from the Rust build
 // (site/), which runs again when products.json or price-history.json is newer than its output.
 // The start page shows the spinner instead of pre-rendered products: run `npm run build` and
-// serve _site/ to see exactly what's deployed.
+// serve _site/ to see exactly what's deployed. Product pages (/p/…) come from the last build.
 import { createServer } from 'node:http';
 import { execFileSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
@@ -12,11 +12,12 @@ import { extname, join, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
-const types = { '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.svg': 'image/svg+xml', '.webmanifest': 'application/manifest+json' };
+const types = { '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.svg': 'image/svg+xml', '.webmanifest': 'application/manifest+json', '.woff2': 'font/woff2' };
 const port = Number(process.env.PORT) || 8080;
 
 function resolve(path) {
   if (/^\/data\/feed[-./]/.test(path)) return join(root, '_site', path);
+  if (path.startsWith('/p/')) return join(root, '_site', `${path}.html`); // product pages: run `npm run build` first
   if (path.startsWith('/data/')) return join(root, path);
   if (path.startsWith('/lib/')) return join(root, 'scripts', path);
   return join(root, 'web', path.endsWith('/') ? `${path}index.html` : path);

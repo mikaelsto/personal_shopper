@@ -13,6 +13,7 @@ import { upgradeProduct } from './lib/normalize.mjs';
 import { aiClassify, applyAiCategories } from './lib/ai-classify.mjs';
 import { aiResolveColors } from './lib/ai-colors.mjs';
 import { aiImageColors, applyImageColors } from './lib/ai-image-colors.mjs';
+import { aiWornPhotos, applyWornPhotos } from './lib/ai-worn-photos.mjs';
 import { sekRates, toSek } from './lib/fx.mjs';
 
 const DATA = fileURLToPath(new URL('../data', import.meta.url));
@@ -98,6 +99,10 @@ await aiResolveColors(merged, colorNames);
 const imageColors = await readJson('image-colors.json', {});
 await aiImageColors(merged, imageColors);
 applyImageColors(merged, imageColors);
+// …and the photo showing the product being worn, for the feed to lead with (cached by product).
+const wornPhotos = await readJson('worn-photos.json', {});
+await aiWornPhotos(merged, wornPhotos);
+applyWornPhotos(merged, wornPhotos);
 
 // Store categories that still end up as "other" — candidates for new taxonomy rules.
 meta.unmapped = Object.fromEntries(
@@ -119,6 +124,7 @@ await writeFile(`${DATA}/products.json`, JSON.stringify({ generatedAt: meta.last
 await writeFile(`${DATA}/price-history.json`, JSON.stringify(history));
 await writeFile(`${DATA}/ai-categories.json`, JSON.stringify(aiCache, null, 1) + '\n');
 await writeFile(`${DATA}/image-colors.json`, JSON.stringify(imageColors) + '\n');
+await writeFile(`${DATA}/worn-photos.json`, JSON.stringify(wornPhotos) + '\n');
 await writeFile(`${DATA}/color-names.json`, JSON.stringify(colorNames, null, 1) + '\n');
 await writeFile(`${DATA}/meta.json`, JSON.stringify(meta, null, 2) + '\n');
 console.log(`Wrote ${merged.length} products.`);

@@ -6,6 +6,8 @@
 //! - every module script's imports, also the nested ones, get a `modulepreload`, so the browser
 //!   fetches them all at once instead of one level at a time
 //! - every local CSS/JS reference and import gets `?v=<build>` (cache-busting)
+//!
+//! It also makes the template for the product pages (product.rs) from the start page.
 
 use crate::prerender::Prerendered;
 use regex::{Captures, Regex};
@@ -30,6 +32,16 @@ pub fn hidden_departments(taxonomy: &str) -> Vec<String> {
     re.captures_iter(taxonomy).map(|c| c[1].to_string()).collect()
 }
 
+/// The start page's link preview and canonical address (product pages have their own).
+const HOME_HEAD: &str = r#"  <link rel="canonical" href="https://runnista.com/">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Runnista">
+  <meta property="og:title" content="Runnista – running gear from many stores, one swipe at a time">
+  <meta property="og:description" content="Running and fashion apparel from many stores, one product per screen.">
+  <meta property="og:url" content="https://runnista.com/">
+  <meta property="og:image" content="https://runnista.com/icon-512.png">
+"#;
+
 pub fn finish(out: &Path, version: &str, first: &Prerendered) -> crate::Result<()> {
     let files = list_files(out)?;
     for file in files.iter().filter(|f| f.extension().is_some_and(|e| e == "html")) {
@@ -38,50 +50,89 @@ pub fn finish(out: &Path, version: &str, first: &Prerendered) -> crate::Result<(
         let mut head = format!("<meta name=\"build\" content=\"{version}\">\n");
 
         if file == &out.join("index.html") {
-            html = html.replacen("<!--prerender-->", &first.html, 1);
+            html = html.replacen("<!--prerender-->", &first.html, 1).replacen("<!--stores-->", &first.stores, 1).replacen("<!--pieces-->", &first.pieces, 1);
+            head += HOME_HEAD;
             head += &format!("  <link rel=\"preload\" href=\"data/feed.json?v={version}\" as=\"fetch\" crossorigin>\n");
             for host in &first.hosts {
                 head += &format!("  <link rel=\"preconnect\" href=\"{host}\">\n");
             }
         }
 
-        for c in MODULE_SCRIPT.captures_iter(&html) {
-            let mut seen = HashSet::new();
-            module_graph(&normalize(&dir.join(&c[1])), &mut seen)?;
-            let mut modules: Vec<_> = seen.into_iter().filter_map(|m| m.strip_prefix(dir).ok().map(Path::to_path_buf)).collect();
-            modules.sort();
-            for m in modules {
-                head += &format!("  <link rel=\"modulepreload\" href=\"{}\">\n", m.to_string_lossy());
-            }
-        }
-
-        let mut inline_err = None;
-        html = INLINE_CSS
-            .replace_all(&html, |c: &Captures| match fs::read_to_string(dir.join(&c[1])) {
-                Ok(css) => format!("<style>{}</style>", minify_css(&css)),
-                Err(e) => {
-                    inline_err = Some(e);
-                    String::new()
-                }
-            })
-            .into_owned();
-        if let Some(e) = inline_err {
-            return Err(e.into());
-        }
-
-        html = html.replacen("</head>", &format!("  {head}</head>"), 1);
+        html = finish_html(html, dir, head)?;
         fs::write(file, html)?;
     }
 
     for file in files.iter().filter(|f| f.extension().is_some_and(|e| e == "html" || e == "js" || e == "mjs")) {
         let text = fs::read_to_string(file)?;
-        let stamped = STAMP_REF.replace_all(&text, format!("${{1}}${{2}}?v={version}\""));
-        let stamped = STAMP_IMPORT.replace_all(&stamped, format!("${{1}}${{2}}?v={version}${{3}}"));
+        let stamped = stamp(&text, version);
         if stamped != text {
-            fs::write(file, stamped.as_ref())?;
+            fs::write(file, stamped)?;
         }
     }
     Ok(())
+}
+
+/// The product pages' template, from the start page's source (web/index.html) and the copied
+/// scripts in `out`: `<base href="/">` (the pages sit in p/<store>/), the stylesheet linked
+/// instead of inline (one cached file instead of ~20 KB in each of ~16 000 pages), and
+/// `<!--head-->` (title, description, previews) and `<!--prerender-->` (the product) to fill in.
+/// The opening card (#intro) is left out: you came for the product.
+pub fn product_template(index_src: &str, out: &Path, version: &str) -> crate::Result<String> {
+    let mut html = index_src.to_string();
+    for (from, to) in [
+        ("<meta charset=\"utf-8\">", "<meta charset=\"utf-8\">\n  <base href=\"/\">"),
+        ("<title>Runnista</title>", "<!--head-->"),
+        (" data-inline>", ">"),
+    ] {
+        if !html.contains(from) {
+            return Err(format!("web/index.html no longer has {from} (needed for the product pages)").into());
+        }
+        html = html.replacen(from, to, 1);
+    }
+    html = Regex::new(r#"\s*<meta name="description"[^>]*>"#).unwrap().replace(&html, "").into_owned();
+    html = Regex::new(r"(?s)<!--intro-->.*<!--/intro-->").unwrap().replace(&html, "").into_owned(); // no opening card
+    if !html.contains("<!--prerender-->") {
+        return Err("web/index.html no longer has <!--prerender--> (needed for the product pages)".into());
+    }
+    let head = format!(
+        "<meta name=\"build\" content=\"{version}\">\n  <link rel=\"preload\" href=\"data/feed.json?v={version}\" as=\"fetch\" crossorigin>\n"
+    );
+    Ok(stamp(&finish_html(html, out, head)?, version))
+}
+
+/// Module preloads and inline CSS for a page in `dir`, and `head` added to its head.
+fn finish_html(mut html: String, dir: &Path, mut head: String) -> crate::Result<String> {
+    for c in MODULE_SCRIPT.captures_iter(&html) {
+        let mut seen = HashSet::new();
+        module_graph(&normalize(&dir.join(&c[1])), &mut seen)?;
+        let mut modules: Vec<_> = seen.into_iter().filter_map(|m| m.strip_prefix(dir).ok().map(Path::to_path_buf)).collect();
+        modules.sort();
+        for m in modules {
+            head += &format!("  <link rel=\"modulepreload\" href=\"{}\">\n", m.to_string_lossy());
+        }
+    }
+
+    let mut inline_err = None;
+    html = INLINE_CSS
+        .replace_all(&html, |c: &Captures| match fs::read_to_string(dir.join(&c[1])) {
+            Ok(css) => format!("<style>{}</style>", minify_css(&css)),
+            Err(e) => {
+                inline_err = Some(e);
+                String::new()
+            }
+        })
+        .into_owned();
+    if let Some(e) = inline_err {
+        return Err(e.into());
+    }
+
+    Ok(html.replacen("</head>", &format!("  {head}</head>"), 1))
+}
+
+/// `?v=<build>` on every local CSS/JS reference and import.
+fn stamp(text: &str, version: &str) -> String {
+    let stamped = STAMP_REF.replace_all(text, format!("${{1}}${{2}}?v={version}\""));
+    STAMP_IMPORT.replace_all(&stamped, format!("${{1}}${{2}}?v={version}${{3}}")).into_owned()
 }
 
 /// Every module `entry` imports, directly or through others (including `entry`).

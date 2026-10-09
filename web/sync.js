@@ -123,7 +123,7 @@ export const syncVote = (key, x) => write((sb) => (x
 // Emails a sign-in link that comes back to this page.
 export async function signIn(email) {
   const sb = await getClient();
-  const { error } = await sb.auth.signInWithOtp({ email, options: { emailRedirectTo: location.origin + location.pathname } });
+  const { error } = await sb.auth.signInWithOtp({ email, options: { emailRedirectTo: location.origin + (location.pathname.startsWith('/p/') ? '/' : location.pathname) } });
   if (error) throw error;
 }
 

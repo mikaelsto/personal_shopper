@@ -5,12 +5,15 @@
 //!   data/*.json (public)     -> _site/data/
 //!   scripts/lib (browser)    -> _site/lib/        shared taxonomy, colours, palettes, feed decoder
 //!   slim product data        -> _site/data/feed.json, feed/<store>/<id>.json, feed-search.json
+//!   a page per product       -> _site/p/<store>/<slug>-<id>.html, sitemap.xml (product.rs)
 //!
 //! `npm run build`, or `cargo run --release --manifest-path site/Cargo.toml` from the repo root.
 
 mod feed;
+mod names;
 mod pages;
 mod prerender;
+mod product;
 
 use std::{
     env, fs,
@@ -60,19 +63,25 @@ fn main() -> Result<()> {
     let feed_json = built.feed.to_string();
     fs::write(out.join("data/feed.json"), &feed_json)?;
     fs::write(out.join("data/feed-search.json"), built.search.to_string())?;
-    write_details(&out.join("data"), &built.details)?;
+    write_files(&out.join("data"), &built.details)?;
 
     // Pages
     let hidden_depts = pages::hidden_departments(&fs::read_to_string(root.join("scripts/lib/taxonomy.mjs"))?);
     let default_feed = prerender::default_feed(&products.products, &day, &hidden_depts);
     let first = prerender::render(&default_feed, PRERENDER);
+    // Before finish(): it stamps the scripts' imports, which the template's preloads follow.
+    let template = pages::product_template(&fs::read_to_string(root.join("web/index.html"))?, &out, &version)?;
     pages::finish(&out, &version, &first)?;
+    let product_pages = product::pages(&template, &products.products, default_feed.len());
+    write_files(&out, &product_pages)?;
+    fs::write(out.join("sitemap.xml"), product::sitemap(&product_pages))?;
 
     println!(
-        "Site built in {} in {:.2}s (v={version}, day {day}): {} products, feed.json {} KB, {} pre-rendered of {} in the default feed",
+        "Site built in {} in {:.2}s (v={version}, day {day}): {} products, {} product pages, feed.json {} KB, {} pre-rendered of {} in the default feed",
         out.display(),
         started.elapsed().as_secs_f64(),
         products.products.len(),
+        product_pages.len(),
         feed_json.len() / 1024,
         PRERENDER.min(default_feed.len()),
         default_feed.len(),
@@ -98,20 +107,20 @@ fn copy_dir(from: &Path, to: &Path) -> Result<()> {
     Ok(())
 }
 
-/// ~16 000 small files: written from all cores.
-fn write_details(data: &Path, details: &[(String, String)]) -> Result<()> {
-    let mut dirs: Vec<PathBuf> = details.iter().filter_map(|(path, _)| data.join(path).parent().map(Path::to_path_buf)).collect();
+/// (path under `base`, contents): ~16 000 small files at a time, written from all cores.
+fn write_files(base: &Path, files: &[(String, String)]) -> Result<()> {
+    let mut dirs: Vec<PathBuf> = files.iter().filter_map(|(path, _)| base.join(path).parent().map(Path::to_path_buf)).collect();
     dirs.sort();
     dirs.dedup();
     for d in &dirs {
         fs::create_dir_all(d)?;
     }
     let threads = std::thread::available_parallelism().map_or(4, |n| n.get());
-    let chunk = details.len().div_ceil(threads).max(1);
+    let chunk = files.len().div_ceil(threads).max(1);
     std::thread::scope(|s| {
-        let handles: Vec<_> = details
+        let handles: Vec<_> = files
             .chunks(chunk)
-            .map(|part| s.spawn(move || part.iter().try_for_each(|(path, json)| fs::write(data.join(path), json))))
+            .map(|part| s.spawn(move || part.iter().try_for_each(|(path, text)| fs::write(base.join(path), text))))
             .collect();
         handles.into_iter().try_for_each(|h| h.join().expect("writer thread panicked"))
     })?;

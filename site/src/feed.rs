@@ -9,6 +9,7 @@
 //! `words` table, most used first so the common ones get the shortest numbers, and stores links
 //! and photos without the prefix they share within a store.
 
+use crate::names::clean_name;
 use serde::Deserialize;
 use serde_json::{json, Map, Value};
 use std::collections::HashMap;
@@ -55,6 +56,8 @@ pub struct Product {
     #[serde(default)]
     pub variants: Vec<Variant>,
     pub photo_color: Option<PhotoColor>,
+    /// Index in `images` of a photo showing the product being worn (scripts/lib/ai-worn-photos.mjs).
+    pub worn: Option<usize>,
     pub first_seen: Option<String>,
     pub last_seen: Option<String>,
     pub collected_at: Option<String>,
@@ -84,6 +87,21 @@ pub struct PhotoColor {
 impl Product {
     pub fn is_cart(&self) -> bool {
         self.cart.as_deref() == Some("shopify")
+    }
+
+    /// The photo the feed leads with: the one showing the product worn, else the store's first.
+    pub fn main_image(&self) -> Option<&String> {
+        self.worn_image().or(self.images.first())
+    }
+
+    pub fn worn_image(&self) -> Option<&String> {
+        self.worn.and_then(|i| self.images.get(i))
+    }
+
+    /// Every photo, the main one first and the rest in the store's order.
+    pub fn images_in_order(&self) -> Vec<&String> {
+        let main = self.main_image();
+        main.into_iter().chain(self.images.iter().filter(|i| Some(*i) != main)).collect()
     }
 }
 
@@ -175,7 +193,7 @@ fn encode_row(p: &Product, store_index: usize, s: &StoreInfo, w: &mut dyn FnMut(
         Value::from(store_index),
         Value::from(p.title.as_str()),
         Value::from(strip(&s.url, &p.url)),
-        Value::from(p.images.first().map(|i| strip(&s.img, i)).unwrap_or("")),
+        Value::from(p.main_image().map(|i| strip(&s.img, i)).unwrap_or("")),
         num(p.price),
         Value::from(p.available as u8),
         Value::from(w(p.brand.as_deref())),
@@ -197,6 +215,11 @@ fn encode_row(p: &Product, store_index: usize, s: &StoreInfo, w: &mut dyn FnMut(
             _ => Value::from(0),
         },
         Value::from(w(p.brand_line.as_deref())),
+        match clean_name(p) {
+            name if name != p.title => Value::from(name),
+            _ => Value::from(0),
+        },
+        Value::from(p.worn_image().is_some() as u8),
     ];
     // Optional fields at the end: leave out the empty ones.
     while row.len() > 16 && row.last() == Some(&Value::from(0)) {
@@ -228,7 +251,7 @@ pub fn build(file: &ProductsFile, history: &Map<String, Value>, day: &str) -> Re
                 base: first.store_base.clone(),
                 cart: first.cart.clone(),
                 url: common_prefix(list.iter().map(|p| p.url.as_str())),
-                img: common_prefix(list.iter().filter_map(|p| p.images.first().map(String::as_str))),
+                img: common_prefix(list.iter().filter_map(|p| p.main_image().map(String::as_str))),
             }
         })
         .collect();
@@ -265,7 +288,7 @@ pub fn build(file: &ProductsFile, history: &Map<String, Value>, day: &str) -> Re
             d.insert("materials".into(), json!(p.materials));
         }
         if p.images.len() > 1 {
-            d.insert("images".into(), json!(p.images[1..]));
+            d.insert("images".into(), json!(p.images_in_order()[1..]));
         }
         if let Some(h) = history.get(&p.id) {
             d.insert("history".into(), h.clone());
@@ -298,6 +321,20 @@ pub fn build(file: &ProductsFile, history: &Map<String, Value>, day: &str) -> Re
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn worn_photo_leads() {
+        let mut p: Product = serde_json::from_value(json!({
+            "id": "x:1", "store": "x", "storeName": "X", "storeBase": "", "title": "T", "url": "", "category": "",
+            "subcategory": "", "gender": "", "price": 1.0, "available": true, "images": ["a", "b", "c"], "worn": 2,
+        }))
+        .unwrap();
+        assert_eq!(p.main_image().map(String::as_str), Some("c"));
+        assert_eq!(p.images_in_order(), ["c", "a", "b"]);
+        p.worn = Some(7); // photos changed since: the store's first
+        assert_eq!(p.main_image().map(String::as_str), Some("a"));
+        assert_eq!(p.images_in_order(), ["a", "b", "c"]);
+    }
 
     #[test]
     fn details_paths_match_the_browser() {

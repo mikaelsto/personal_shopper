@@ -15,13 +15,15 @@
 //   words     shared strings (brands, categories, sizes, colours, dates…); words[0] is null
 //   products  one row each, in the order of ROW below; trailing empty fields are left out
 //   day       the build's date: the feed's daily order (and the pre-rendered first products)
+//   name      the clean name (site/src/names.rs), only where it differs from the store's title
+//   worn      1 when the photo (the first in images) shows the product being worn
 //
 // Pure ES module: no DOM, so the browser and Node scripts can both load it.
 
 export const ROW = [
   'id', 'store', 'title', 'url', 'image', 'price', 'available', 'brand', 'brandKey', 'category', 'subcategory',
   'gender', 'firstSeen', 'colors', 'sizes', 'stock', 'variantColors', 'features', 'fabrics', 'compareAt', 'local',
-  'photoColor', 'brandLine',
+  'photoColor', 'brandLine', 'name', 'worn',
 ];
 
 // "kayo:16844" -> "feed/kayo/16844.json" (ids are "<store>:<store's own id>").
@@ -30,7 +32,30 @@ export function detailsPath(id) {
   return `feed/${store}/${rest.join(':').replace(/[^\w-]/g, '_')}.json`;
 }
 
-const withPrefix = (prefix, s) => (!s || /^https?:/.test(s) ? s : prefix + s);
+// A product's own page: "p/<store>/<slug>-<id>", e.g. "p/loplabbet/nike-alphafly-next-3-kolfiberskor-156650213".
+// The Rust build writes one per product (product_path() in site/src/product.rs, which must agree).
+const FOLD = { å: 'a', ä: 'a', á: 'a', à: 'a', â: 'a', ã: 'a', æ: 'ae', ç: 'c', é: 'e', è: 'e', ê: 'e', ë: 'e', í: 'i', ì: 'i',
+  î: 'i', ï: 'i', ñ: 'n', ö: 'o', ø: 'o', ó: 'o', ò: 'o', ô: 'o', õ: 'o', ß: 'ss', ú: 'u', ù: 'u', û: 'u', ü: 'u' };
+export function slug(text, max = 70) {
+  let s = '';
+  for (const c of text.toLowerCase().replace(/['’]/g, '')) s += FOLD[c] ?? (/[a-z0-9]/.test(c) ? c : '-');
+  s = s.replace(/-+/g, '-').replace(/^-|-$/g, '');
+  if (s.length > max) s = s.slice(0, max).replace(/-[^-]*$/, '') || s.slice(0, max);
+  return s;
+}
+export function productPath(p) {
+  const [store, ...rest] = p.id.split(':');
+  const file = rest.join(':').replace(/[^\w-]/g, '_');
+  const name = slug(fullName(p));
+  return `p/${store}/${name ? `${name}-` : ''}${file}`;
+}
+// "Nike Alphafly Next% 3": the clean name with the brand in front, unless it's in it (full_name() in product.rs).
+export const fullName = (p) => {
+  const name = p.name ?? p.title;
+  return p.brand && !name.toLowerCase().includes(p.brand.toLowerCase()) ? `${p.brand} ${name}` : name;
+};
+
+const withPrefix =(prefix, s) => (!s || /^https?:/.test(s) ? s : prefix + s);
 
 // One feed.json row -> the product shape the site uses (as in products.json). Until its details
 // file is merged in (p.details = true), description and materials are empty, images has one
@@ -38,7 +63,7 @@ const withPrefix = (prefix, s) => (!s || /^https?:/.test(s) ? s : prefix + s);
 export function decodeProduct(row, feed) {
   const [id, si, title, url, image, price, available, brand, brandKey, category, subcategory, gender, firstSeen,
     colors = [], sizes = [], stock = '', variantColors = 0, features = 0, fabrics = 0, compareAt = 0, local = 0,
-    photoColor = 0, brandLine = 0] = row;
+    photoColor = 0, brandLine = 0, name = 0, worn = 0] = row;
   const s = feed.stores[si];
   const w = (i) => feed.words[i] ?? null;
   const colorNames = colors.map(w);
@@ -49,7 +74,7 @@ export function decodeProduct(row, feed) {
   }));
   return {
     id: `${s.id}:${id}`, store: s.id, storeName: s.name, storeBase: s.base, cart: s.cart,
-    title, url: withPrefix(s.url, url), brand: w(brand), brandKey: w(brandKey), brandLine: w(brandLine),
+    title, name: name || title, worn: worn === 1, url: withPrefix(s.url, url), brand: w(brand), brandKey: w(brandKey), brandLine: w(brandLine),
     category: w(category), subcategory: w(subcategory), gender: w(gender),
     features: features ? features.map(w) : [], fabrics: fabrics ? fabrics.map(w) : [],
     price, compareAt: compareAt || null, available: available === 1,

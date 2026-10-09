@@ -1,19 +1,26 @@
 //! The start page's first products, rendered at build time so a phone shows a product before
 //! any script or data has loaded. They're the first slides of the default feed (no filters, in
 //! the day's order) with the same markup as slideHtml() in web/feed.js, minus what needs the
-//! browser: colour dots, ♥ state and the details pane. When the feed has loaded, rebuild() in
+//! browser: the colour dot and name, the background tint, the other photos, ♥ state and the
+//! details pane. When the feed has loaded, rebuild() in
 //! feed.js replaces them and keeps their photos.
 
 use crate::feed::Product;
+use crate::names::clean_name;
 use regex::Regex;
 use std::sync::LazyLock;
 
 const ICON_MENU: &str = r#"<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>"#;
 const ICON_LEFT: &str = r#"<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>"#;
+const ICON_SHARE: &str = r#"<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V4M8 8l4-4 4 4M5 12v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/></svg>"#;
+const ICON_OUT: &str = r#"<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 16L17 7M9 7h8v8"/></svg>"#;
 const ICON_HEART: &str = r#"<svg class="heart" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20s-7.5-4.6-9.3-9.2C1.4 7.4 3.6 4 7 4c2.1 0 3.6 1.2 5 3 1.4-1.8 2.9-3 5-3 3.4 0 5.6 3.4 4.3 6.8C19.5 15.4 12 20 12 20z"/></svg>"#;
 
 pub struct Prerendered {
     pub html: String,
+    /// For the opening card: "14" stores and "14,000" running pieces in the default feed.
+    pub stores: String,
+    pub pieces: String,
     /// The photos' hosts, to connect to early.
     pub hosts: Vec<String>,
 }
@@ -40,25 +47,47 @@ pub fn render(feed: &[&Product], count: usize) -> Prerendered {
     let html = feed.iter().take(count).enumerate().map(|(i, p)| slide(p, i, total)).collect();
     let mut hosts: Vec<String> = Vec::new();
     for p in feed.iter().take(6) {
-        if let Some(host) = p.images[0].split('/').nth(2) {
+        if let Some(host) = p.main_image().and_then(|i| i.split('/').nth(2)) {
             let origin = format!("https://{host}");
             if !hosts.contains(&origin) {
                 hosts.push(origin);
             }
         }
     }
-    Prerendered { html, hosts }
+    let mut stores: Vec<&str> = feed.iter().map(|p| p.store.as_str()).collect();
+    stores.sort_unstable();
+    stores.dedup();
+    Prerendered { html, hosts, stores: stores.len().to_string(), pieces: rounded_count(total) }
 }
 
-fn slide(p: &Product, i: usize, total: usize) -> String {
-    let title = display_title(p);
+/// introCount() in web/feed.js: 14443 -> "14,000", 812 -> "812".
+fn rounded_count(n: usize) -> String {
+    if n < 1000 {
+        return n.to_string();
+    }
+    let n = n / 1000 * 1000;
+    let digits = n.to_string();
+    let mut out = String::new();
+    for (i, c) in digits.chars().enumerate() {
+        if i > 0 && (digits.len() - i) % 3 == 0 {
+            out.push(',');
+        }
+        out.push(c);
+    }
+    out
+}
+
+pub fn slide(p: &Product, i: usize, total: usize) -> String {
+    let title = clean_name(p);
     let pos = format!("{} / {total}", i + 1);
-    let img = &p.images[0];
+    let img = p.main_image().expect("pre-rendered products have a photo");
     let srcset = srcset(img);
     let srcset = if srcset.is_empty() { String::new() } else { format!(r#" srcset="{}" sizes="(min-width: 900px) 57vw, 100vw""#, esc(&srcset)) };
     let load = if i < 2 { r#"fetchpriority="high""# } else { r#"loading="lazy""# };
     format!(
-        r#"<article class="slide" data-pre data-id="{id}" aria-roledescription="product" aria-label="{title}, {pos}"><div class="pager"><section class="pane media"><a class="shot" href="{url}" target="_blank" rel="noopener" draggable="false" title="To the product page at {store}"><img src="{src}"{srcset} alt="{title}" draggable="false" {load}></a><span class="pos" aria-hidden="true">{pos}</span><button class="peek" data-action="details" aria-label="Product details">{ICON_LEFT}</button><button class="save" aria-pressed="false" aria-label="Save to your saved products">{ICON_HEART}</button><div class="caption"><p class="who"><span class="store-tag">{store}</span>{brand}</p><h2 class="title">{title}</h2><p class="price-row">{price}</p><p class="meta"><span class="stock">{stock}</span></p></div>{footer}</section></div></article>"#,
+        r#"<article class="slide{worn}" data-pre data-id="{id}" aria-roledescription="product" aria-label="{title}, {pos}"><div class="pager"><section class="pane media"><div class="shots"><div class="shot"><img src="{src}"{srcset} alt="{title}" draggable="false" {load}></div></div><a class="wordmark" href="/" aria-label="Runnista, start page">runnista</a><button class="peek" data-action="details" aria-label="Product details">{ICON_LEFT}</button><button class="share" data-action="share" aria-label="Share">{ICON_SHARE}</button><button class="save" aria-pressed="false" aria-label="Save to your saved products">{ICON_HEART}</button><div class="caption"><p class="who"><span class="store-tag">{store}</span>{brand}{gender}</p><h2 class="title">{title}</h2><p class="price-row">{price}</p><p class="meta"><span class="stock">{stock}</span></p><a class="buy" href="{url}" target="_blank" rel="noopener">Shop now at {store} {ICON_OUT}</a></div>{footer}</section></div></article>"#,
+        worn = if p.worn_image().is_some() { " worn" } else { "" },
+        gender = gender_html(p),
         id = esc(&p.id),
         title = esc(&title),
         url = esc(&p.url),
@@ -110,12 +139,17 @@ fn sv_int(n: f64) -> String {
     out
 }
 
-fn sek(n: f64) -> String {
+pub fn sek(n: f64) -> String {
     format!("{} kr", sv_int(n))
 }
 
-fn display_title(p: &Product) -> String {
-    if p.colors.len() == 1 { format!("{} – {}", p.title, p.colors[0]) } else { p.title.clone() }
+/// "Women" or "Men" after the brand (genderHtml() in web/feed.js).
+fn gender_html(p: &Product) -> &'static str {
+    match p.gender.as_str() {
+        "women" => r#"<span class="for">Women</span>"#,
+        "men" => r#"<span class="for">Men</span>"#,
+        _ => "",
+    }
 }
 
 fn is_shopify(url: &str) -> bool {
@@ -123,7 +157,7 @@ fn is_shopify(url: &str) -> bool {
 }
 
 /// thumb() in web/shop-utils.js.
-fn thumb(url: &str, w: u32) -> String {
+pub fn thumb(url: &str, w: u32) -> String {
     if is_shopify(url) {
         format!("{url}{}width={w}", if url.contains('?') { '&' } else { '?' })
     } else if url.contains("images.ka-yo.com/product/1000f1239/") && w <= 500 {
@@ -182,6 +216,16 @@ fn short_size(s: &str) -> String {
 
 /// Sizes in stock: "S · M · L" (stockSizesHtml() in web/feed.js, without "your sizes").
 fn stock_sizes(p: &Product, max: usize) -> String {
+    let sizes = sizes_in_stock(p);
+    let mut out = sizes.iter().take(max).map(|s| esc(s)).collect::<Vec<_>>().join(" · ");
+    if sizes.len() > max {
+        out.push_str(&format!(" · +{}", sizes.len() - max));
+    }
+    out
+}
+
+/// Short sizes in stock, in the store's order, each once.
+pub fn sizes_in_stock(p: &Product) -> Vec<String> {
     let mut sizes: Vec<String> = Vec::new();
     for v in p.variants.iter().filter(|v| v.available) {
         let s = match v.size.as_deref() {
@@ -192,11 +236,7 @@ fn stock_sizes(p: &Product, max: usize) -> String {
             sizes.push(s);
         }
     }
-    let mut out = sizes.iter().take(max).map(|s| esc(s)).collect::<Vec<_>>().join(" · ");
-    if sizes.len() > max {
-        out.push_str(&format!(" · +{}", sizes.len() - max));
-    }
-    out
+    sizes
 }
 
 #[cfg(test)]
@@ -216,6 +256,13 @@ mod tests {
         assert_eq!(sv_int(857.0), "857");
         assert_eq!(sv_int(1234.5), "1\u{a0}235");
         assert_eq!(sv_int(1234567.0), "1\u{a0}234\u{a0}567");
+    }
+
+    #[test]
+    fn counts() {
+        assert_eq!(rounded_count(812), "812");
+        assert_eq!(rounded_count(14443), "14,000");
+        assert_eq!(rounded_count(1_250_000), "1,250,000");
     }
 
     #[test]
