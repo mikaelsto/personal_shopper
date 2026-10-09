@@ -240,6 +240,11 @@ button.size { cursor: pointer; }
 .chip[aria-pressed=true] .n { color: rgb(0 0 0 / .55); }
 .chip .dot { width: 14px; height: 14px; border-color: rgb(255 255 255 / .35); }
 .chip.ex[aria-pressed=true] { background: var(--surface); color: var(--muted); border-color: var(--sale); text-decoration: line-through; text-decoration-color: var(--sale); }
+/* Store chips are checkboxes, all on by default: a tick when on, struck through when off. */
+.chip.check[aria-pressed=true]::before { content: '✓'; font-weight: 700; }
+.chip.check[aria-pressed=false] { color: var(--muted); text-decoration: line-through; }
+.group-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.group-head .link { font-size: 13.5px; }
 .chip.ex[aria-pressed=true] .dot { opacity: .45; }
 .sizes-pick .chip { min-width: 54px; justify-content: center; padding: 0 10px; font-variant-numeric: tabular-nums; }
 .seg { display: inline-flex; gap: 2px; padding: 3px; border-radius: 12px; background: var(--surface); }

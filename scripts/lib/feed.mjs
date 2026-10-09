@@ -43,6 +43,7 @@ export function buildFeed(products, history = {}, generatedAt = new Date().toISO
       features: p.features?.length ? p.features : undefined,
       fabrics: p.fabrics?.length ? p.fabrics : undefined,
       price: p.price, compareAt: p.compareAt ?? undefined, available: p.available,
+      local: p.local ? { currency: p.local.currency, price: p.local.price } : undefined, // converted from this
       colors: p.colors, image: p.images[0],
       // [size, in stock, colour (only when there are several), variant id (only for cart links)]
       variants: p.variants.map((v) => {

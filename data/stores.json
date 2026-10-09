@@ -57,5 +57,88 @@
     ],
     "note": "Behind Cloudflare: collected with Claude in Chrome (only Löparskor, Löparkläder, Löparstrumpor)",
     "addedAt": "2026-10-09"
+  },
+  {
+    "id": "incylence",
+    "name": "Incylence",
+    "origin": "https://incylence.com",
+    "platform": "shopify",
+    "base": "https://incylence.com/en",
+    "collection": "running",
+    "country": "SE",
+    "addedAt": "2026-10-09"
+  },
+  {
+    "id": "saysky",
+    "name": "SAYSKY",
+    "origin": "https://saysky.com",
+    "platform": "shopify",
+    "base": "https://saysky.com",
+    "country": "SE",
+    "addedAt": "2026-10-09"
+  },
+  {
+    "id": "soarrunning",
+    "name": "SOAR",
+    "origin": "https://www.soarrunning.com",
+    "platform": "shopify",
+    "base": "https://www.soarrunning.com/en-se",
+    "country": "SE",
+    "addedAt": "2026-10-09"
+  },
+  {
+    "id": "actrunning",
+    "name": "ACT Running",
+    "origin": "https://www.act-running.com",
+    "platform": "shopify",
+    "base": "https://www.act-running.com/en-eu",
+    "country": "SE",
+    "addedAt": "2026-10-09"
+  },
+  {
+    "id": "banditrunning",
+    "name": "Bandit",
+    "origin": "https://banditrunning.com",
+    "platform": "shopify",
+    "base": "https://banditrunning.com",
+    "country": "SE",
+    "addedAt": "2026-10-09"
+  },
+  {
+    "id": "districtvision",
+    "name": "District Vision",
+    "origin": "https://districtvision.com",
+    "platform": "shopify",
+    "base": "https://districtvision.com",
+    "country": "SE",
+    "addedAt": "2026-10-09"
+  },
+  {
+    "id": "doxarun",
+    "name": "DOXA",
+    "origin": "https://doxarun.eu",
+    "platform": "shopify",
+    "base": "https://doxarun.eu",
+    "collection": "all-products",
+    "country": "SE",
+    "addedAt": "2026-10-09"
+  },
+  {
+    "id": "sumsclub",
+    "name": "SUMS",
+    "origin": "https://sumsclub.co.uk",
+    "platform": "shopify",
+    "base": "https://sumsclub.co.uk",
+    "country": "SE",
+    "addedAt": "2026-10-09"
+  },
+  {
+    "id": "ymrtrackclub",
+    "name": "YMR Track Club",
+    "origin": "https://ymrtrackclub.com",
+    "platform": "shopify",
+    "base": "https://ymrtrackclub.com",
+    "country": "SE",
+    "addedAt": "2026-10-09"
   }
 ]

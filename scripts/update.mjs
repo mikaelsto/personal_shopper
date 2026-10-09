@@ -13,6 +13,7 @@ import { upgradeProduct } from './lib/normalize.mjs';
 import { aiClassify, applyAiCategories } from './lib/ai-classify.mjs';
 import { aiResolveColors } from './lib/ai-colors.mjs';
 import { aiImageColors, applyImageColors } from './lib/ai-image-colors.mjs';
+import { sekRates, toSek } from './lib/fx.mjs';
 
 const DATA = fileURLToPath(new URL('../data', import.meta.url));
 const today = new Date().toISOString().slice(0, 10);
@@ -53,6 +54,16 @@ for (const store of stores) {
   }
 }
 
+// Prices in other currencies (stores selling to Sweden in EUR, USD…) are converted to SEK.
+const foreign = [...fresh.values()].flat().filter((p) => p.currency && p.currency !== 'SEK');
+if (foreign.length) {
+  const fx = await sekRates(await readJson('fx-rates.json', null));
+  if (fx) await writeFile(`${DATA}/fx-rates.json`, JSON.stringify(fx, null, 1) + '\n');
+  const missed = foreign.filter((p) => !toSek(p, fx));
+  console.log(`  Converted ${foreign.length - missed.length} prices to SEK (rates of ${fx?.date ?? '–'})`);
+  if (missed.length) console.error(`  No exchange rate for ${[...new Set(missed.map((p) => p.currency))].join(', ')}: prices shown as is`);
+}
+
 // Merge: refreshed stores replace their products; others are kept as-is.
 // Products from stores no longer in stores.json are dropped.
 const registered = new Set(STORES.map((s) => s.id));
@@ -63,8 +74,12 @@ for (const products of fresh.values()) {
     p.firstSeen = old?.firstSeen ?? today;
     p.lastSeen = today;
     if (p.price != null) {
+      // Converted prices move with the exchange rate every day, so only the store's own price
+      // counts as a change; it's kept as a third value: [date, SEK, own price].
       const h = (history[p.id] ??= []);
-      if (!h.length || h.at(-1)[1] !== p.price) h.push([today, p.price]);
+      const own = p.local?.price ?? p.price;
+      const last = h.at(-1);
+      if (!last || (last[2] ?? last[1]) !== own) h.push(p.local ? [today, p.price, own] : [today, p.price]);
     }
     merged.push(p);
   }

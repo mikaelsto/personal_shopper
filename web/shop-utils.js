@@ -12,6 +12,17 @@ export const store = {
   set: (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
 };
 
+// Stores you've unchecked, shared by the shop and the feed. Saved as the hidden ones, so a store
+// added later shows up checked.
+export const loadHiddenStores = () => new Set(store.get('hiddenStores', []));
+export const saveHiddenStores = (ids) => store.set('hiddenStores', [...ids]);
+
+// Stores that sell to Sweden in EUR, USD… have their prices converted to SEK by the update job;
+// p.local is the store's own price.
+const money = (n, currency) => n.toLocaleString('sv-SE', { style: 'currency', currency, maximumFractionDigits: n % 1 ? 2 : 0 });
+export const approx = (p) => (p.local ? '≈ ' : '');
+export const localPrice = (p) => (p.local ? `${money(p.local.price, p.local.currency)} at ${p.storeName}, converted to kronor` : '');
+
 export const catLabel = (p) => (p.subcategory && p.subcategory !== 'other' ? `${label(p.category)} › ${label(p.subcategory)}` : 'Other');
 export const displayTitle = (p) => (p.colors.length === 1 ? `${p.title} – ${p.colors[0]}` : p.title);
 

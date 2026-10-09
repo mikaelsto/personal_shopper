@@ -162,6 +162,11 @@ dialog::backdrop { background: rgb(0 0 0 / .45); }
 .chip .n { color: var(--muted); font-size: 11px; margin-left: 2px; }
 .chip[aria-pressed=true] .n { color: inherit; opacity: .7; }
 .chip.pending { border-style: dashed; }
+/* Store chips are checkboxes, all on by default: a tick when on, struck through when off. */
+.chip.check[aria-pressed=true] { background: var(--surface); color: var(--text); border-color: var(--text); }
+.chip.check[aria-pressed=true]::before { content: '✓'; margin-right: 5px; font-weight: 700; }
+.chip.check[aria-pressed=true] .n { color: var(--muted); opacity: 1; }
+.chip.check[aria-pressed=false] { color: var(--muted); text-decoration: line-through; }
 .chip.add { font-weight: 700; min-width: 34px; color: var(--accent); border-color: var(--accent); }
 dialog.narrow { width: min(520px, 94vw); }
 .add-form { padding: 18px; display: flex; flex-direction: column; gap: 12px; }
@@ -186,8 +191,9 @@ dialog.narrow { width: min(520px, 94vw); }
 .hit-label { font-size: 12px; color: var(--accent); margin-left: 2px; }
 
 .pal-filter { padding: 14px; margin: 18px -4px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); }
-.pal-filter-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 8px; }
-.pal-filter-head h3 { margin: 0; }
+.pal-filter-head, .section-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 8px; }
+.pal-filter-head h3, .section-head h3 { margin: 0; }
+.section-head .link { font-size: 13px; }
 .pal-filter-head a { font-size: 13px; color: var(--accent); white-space: nowrap; }
 .pal-fam { margin-bottom: 10px; }
 .pal-fam-name { display: block; font-size: 12px; font-weight: 600; margin-bottom: 4px; }

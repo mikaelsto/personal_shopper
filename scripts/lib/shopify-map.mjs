@@ -4,7 +4,15 @@
 import { normalizeProduct } from './normalize.mjs';
 
 export const shopifyPageUrl = (store, page, limit = 250) =>
-  `${store.base}/collections/all/products.json?limit=${limit}&page=${page}&country=${store.country ?? 'SE'}`;
+  `${store.base}/collections/${store.collection ?? 'all'}/products.json?limit=${limit}&page=${page}&country=${store.country ?? 'SE'}`;
+
+// Where to read a Shopify store from the URL you give it: a locale prefix sets the language
+// (/en, /en-se) and a collection narrows the catalogue.
+// "https://x.com/en/collections/running" -> { base: "https://x.com/en", collection: "running" }
+export function shopifyLocation(url) {
+  const [, locale = '', collection] = url.pathname.match(/^(\/[a-z]{2}(?:-[a-z]{2})?(?=\/|$))?(?:\/collections\/([^/]+))?/i);
+  return { base: `${url.origin}${locale}`, ...(collection && collection !== 'all' ? { collection } : {}) };
+}
 
 export const isGiftCard = (p) => /gift ?card/i.test(`${p.product_type} ${p.title}`);
 
@@ -41,7 +49,7 @@ export function fromShopify(store, p) {
     descriptionHtml: p.body_html ?? '',
     images: (p.images ?? []).map((i) => i.src),
     variants,
-    currency: 'SEK',
+    currency: store.currency ?? 'SEK',
     cart: 'shopify',
   });
 }

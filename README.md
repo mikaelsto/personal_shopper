@@ -8,7 +8,11 @@ One place to browse running and fashion apparel from several stores. It has a sh
 
 ## Stores
 
-Stores are listed in `data/stores.json`. Defaults: **Satisfy**, **UVU**, **KA-YO**, **Löplabbet**, **Passa Sports** (running shoes, clothes and socks only).
+Stores are listed in `data/stores.json`. Defaults: **Satisfy**, **UVU**, **KA-YO**, **Löplabbet**, **Passa Sports** (running shoes, clothes and socks only), **Incylence** (running collection), **SAYSKY**, **SOAR**, **ACT Running**, **Bandit**, **District Vision**, **DOXA**, **SUMS**, **YMR Track Club**.
+
+They're all checked by default. Uncheck a store (Stores in the shop, or Categories in the feed) to hide its products. The choice is remembered in your browser, is shared by the shop and the feed, and isn't cleared by Reset. **All** / **None** check or uncheck every store.
+
+Prices are shown in SEK. Stores that sell to Sweden in another currency (Incylence, SAYSKY, DOXA and SUMS in EUR, District Vision in USD) are converted with the day's ECB rate, cached in `data/fx-rates.json`. These prices show as "≈ 268 kr", and the store's own price appears in the product details. Their price history records a change only when the store's own price changes, not when the exchange rate moves.
 
 ### Adding a store
 
@@ -28,7 +32,7 @@ How a store is read, tried in this order:
 
 | Platform | How | Example |
 |---|---|---|
-| `shopify` | Public `products.json` feed, with prices in SEK | Satisfy, UVU |
+| `shopify` | Public `products.json` feed for the Swedish market. A locale in the URL sets the language (`/en-se`), and `collection` narrows the catalogue (default `all`) | Satisfy, UVU, Incylence (`running`) |
 | `geins` | The storefront's own product API, using the public key in the page | KA-YO |
 | `intersport` | Intersport-group storefront: listing pages embed the full search result (in-stock items only, no per-size stock) | Löplabbet |
 | `jsonld` | Sitemap, then the structured product data on each page (max 1000 pages per run) | On |

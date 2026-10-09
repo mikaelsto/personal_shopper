@@ -5,6 +5,7 @@ import { BROWSER_UA, get, getJson, getText } from './http.mjs';
 import { sitemapUrls, parseProductPage } from '../adapters/jsonld.mjs';
 import { fetchGeins } from '../adapters/geins.mjs';
 import { extractSearchResult } from '../adapters/intersport.mjs';
+import { shopifyLocation } from './shopify-map.mjs';
 
 export function storeId(hostname) {
   const label = hostname.replace(/^www\./, '').split('.')[0];
@@ -22,7 +23,7 @@ export async function detectStore(rawUrl, name) {
   try {
     const data = await getJson(`${origin}/products.json?limit=1`);
     if (Array.isArray(data.products)) {
-      return { ...common, platform: 'shopify', base: origin, country: 'SE', log: [...log, 'Shopify feed found'] };
+      return { ...common, platform: 'shopify', ...shopifyLocation(url), country: 'SE', log: [...log, 'Shopify feed found'] };
     }
   } catch (err) {
     log.push(`Not Shopify (${err.message})`);

@@ -3,7 +3,7 @@
 // Newly added Shopify stores are also fetched live in the browser until the job has added them.
 
 import { TAXONOMY, label } from './lib/taxonomy.mjs';
-import { fromShopify, isGiftCard, shopifyPageUrl } from './lib/shopify-map.mjs';
+import { fromShopify, isGiftCard, shopifyPageUrl, shopifyLocation } from './lib/shopify-map.mjs';
 import { FABRICS, fabricLabel } from './lib/normalize.mjs';
 import { PALETTES, FAMILIES, paletteById } from './lib/palettes.mjs';
 import {
@@ -13,6 +13,7 @@ import {
 } from './palette-filter.js';
 import {
   REPO, esc, sek, store, catLabel, displayTitle, thumb, sizeLetter, shortSize, historyHtml, loadFeed, loadDetails, loadSearchWords,
+  loadHiddenStores, saveHiddenStores, approx, localPrice,
 } from './shop-utils.js';
 
 const PAGE = 60;
@@ -36,7 +37,8 @@ let targets = targetColors(palette);
 const votes = store.get('paletteVotes', {});
 
 const state = {
-  q: '', stores: new Set(), category: '', features: new Set(), fabrics: new Set(), brands: new Set(),
+  // Every store is checked unless you uncheck it (remembered in this browser, also used by the feed).
+  q: '', hiddenStores: loadHiddenStores(), category: '', features: new Set(), fabrics: new Set(), brands: new Set(),
   gender: '', size: store.get('size', ''), min: '', max: '', stock: true, sale: false, sort: 'relevance',
 };
 
@@ -72,7 +74,7 @@ function renderStoreChips() {
   $('#f-stores').innerHTML = stores.map((s) => {
     const status = liveStatus.get(s.id);
     const note = status ?? (s.pending ? (counts[s.id] ? `${counts[s.id]} · not saved` : 'not saved') : counts[s.id] ?? 0);
-    return `<button class="chip ${s.pending ? 'pending' : ''}" data-store="${esc(s.id)}" aria-pressed="${state.stores.has(s.id)}" title="${esc(s.base)}">${esc(s.name)} <span class="n">${esc(note)}</span>${s.pending ? `<span class="x" data-remove="${esc(s.id)}" title="Remove">×</span>` : ''}</button>`;
+    return `<button class="chip check ${s.pending ? 'pending' : ''}" data-store="${esc(s.id)}" aria-pressed="${!state.hiddenStores.has(s.id)}" title="${esc(s.base)}">${esc(s.name)} <span class="n">${esc(note)}</span>${s.pending ? `<span class="x" data-remove="${esc(s.id)}" title="Remove">×</span>` : ''}</button>`;
   }).join('') + `<button class="chip add" id="add-store-btn" title="Add a store" aria-label="Add a store">+</button>`;
 }
 
@@ -116,8 +118,14 @@ function bind() {
     if (e.target.closest('#add-store-btn')) return openAddStore();
     const remove = e.target.closest('[data-remove]');
     if (remove) return removePending(remove.dataset.remove);
-    toggleChip(e, 'store', state.stores);
+    const b = e.target.closest('[data-store]');
+    if (!b) return;
+    const hidden = new Set(state.hiddenStores);
+    hidden.has(b.dataset.store) ? hidden.delete(b.dataset.store) : hidden.add(b.dataset.store);
+    setHiddenStores(hidden);
   });
+  $('#stores-all').addEventListener('click', () => setHiddenStores([]));
+  $('#stores-none').addEventListener('click', () => setHiddenStores(stores.map((s) => s.id)));
   $('#f-features').addEventListener('click', (e) => toggleChip(e, 'feature', state.features));
   $('#f-fabrics').addEventListener('click', (e) => toggleChip(e, 'fabric', state.fabrics));
   $('#f-brands').addEventListener('click', (e) => {
@@ -205,9 +213,16 @@ function toggleChip(e, attr, set) {
   apply();
 }
 
+function setHiddenStores(ids) {
+  state.hiddenStores = new Set(ids);
+  saveHiddenStores(state.hiddenStores);
+  syncControls();
+  apply();
+}
+
+// Your stores stay as they are, like your size: they're a setting more than a filter.
 function reset(run = true) {
   Object.assign(state, { q: '', category: '', gender: '', min: '', max: '', stock: true, sale: false });
-  state.stores.clear();
   state.features.clear();
   state.fabrics.clear();
   state.brands.clear();
@@ -224,7 +239,7 @@ function syncControls() {
   $('#f-max').value = state.max;
   $('#f-stock').checked = state.stock;
   $('#f-sale').checked = state.sale;
-  document.querySelectorAll('[data-store]').forEach((b) => b.setAttribute('aria-pressed', state.stores.has(b.dataset.store)));
+  document.querySelectorAll('[data-store]').forEach((b) => b.setAttribute('aria-pressed', !state.hiddenStores.has(b.dataset.store)));
   document.querySelectorAll('[data-fabric]').forEach((b) => b.setAttribute('aria-pressed', state.fabrics.has(b.dataset.fabric)));
   document.querySelectorAll('[data-feature]').forEach((b) => b.setAttribute('aria-pressed', state.features.has(b.dataset.feature)));
 }
@@ -336,7 +351,7 @@ const hasSize = (p, size) => p.variants.some((v) => v.available && sizeLetter(v.
 // Every filter except Brand; brand counts are computed on this set, so they follow the other filters.
 function matchesExceptBrand(p, words, min, max) {
   return (
-    (!state.stores.size || state.stores.has(p.store)) &&
+    !state.hiddenStores.has(p.store) &&
     inPalette(p) &&
     inCategory(p, state.category) &&
     [...state.features].every((f) => p.features.includes(f)) &&
@@ -409,9 +424,10 @@ function renderBrandFilter(base = brandBase) {
 }
 
 function priceHtml(p) {
+  const title = p.local ? ` title="${esc(localPrice(p))}"` : '';
   return p.compareAt
-    ? `<span class="price sale">${sek(p.price)}<s>${sek(p.compareAt)}</s></span>`
-    : `<span class="price">${sek(p.price)}</span>`;
+    ? `<span class="price sale"${title}>${approx(p)}${sek(p.price)}<s>${sek(p.compareAt)}</s></span>`
+    : `<span class="price"${title}>${approx(p)}${sek(p.price)}</span>`;
 }
 
 // Colour dots per colourway; colourways in the chosen palette are ringed.
@@ -525,6 +541,7 @@ async function openDetail(id) {
       <div class="info">
         <div class="muted">${esc(p.brand)} · sold by <strong>${esc(p.storeName)}</strong></div>
         ${priceHtml(p)}
+        ${p.local ? `<div class="muted">${esc(localPrice(p))}</div>` : ''}
         <div>${p.features.map((f) => `<span class="tag">${esc(f)}</span>`).join('')}${(p.fabrics ?? []).map((f) => `<span class="tag">${esc(fabricLabel(f))}</span>`).join('')}<span class="tag">${esc(catLabel(p))}</span>${p.gender !== 'unisex' ? `<span class="tag">${p.gender}</span>` : ''}</div>
         ${p.colors.length ? `<h3>Colour</h3><div>${swatchesHtml(p) || esc(p.colors.join(', '))}${p._swatches.length ? `<div class="muted">${esc(p.colors.join(', '))}</div>` : ''}</div>` : ''}
         <h3>Size</h3>
@@ -633,7 +650,7 @@ async function addStore(rawUrl, name) {
     .catch(() => false);
 
   const pending = {
-    id, name: displayName, base: isShopify ? url.origin : url.href.replace(/\/+$/, ''),
+    id, name: displayName, base: url.href.replace(/\/+$/, ''), ...(isShopify ? shopifyLocation(url) : {}),
     origin: url.origin, platform: isShopify ? 'shopify' : 'unknown', country: 'SE', addedAt: new Date().toISOString().slice(0, 10),
   };
   store.set('pendingStores', [...store.get('pendingStores', []), pending]);
@@ -657,7 +674,8 @@ async function addStore(rawUrl, name) {
 function removePending(id) {
   store.set('pendingStores', store.get('pendingStores', []).filter((s) => s.id !== id));
   stores = stores.filter((s) => !(s.pending && s.id === id));
-  state.stores.delete(id);
+  state.hiddenStores.delete(id);
+  saveHiddenStores(state.hiddenStores);
   liveStatus.delete(id);
   all = all.filter((p) => p.store !== id);
   buildFilters();

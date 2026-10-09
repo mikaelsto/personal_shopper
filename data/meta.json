@@ -24,12 +24,70 @@
       "ok": true,
       "count": 6781,
       "updatedAt": "2026-10-09T17:45:50.418Z"
+    },
+    "incylence": {
+      "ok": true,
+      "count": 103,
+      "updatedAt": "2026-10-09T17:47:28.245Z"
+    },
+    "saysky": {
+      "ok": true,
+      "count": 808,
+      "updatedAt": "2026-10-09T17:47:37.334Z"
+    },
+    "soarrunning": {
+      "ok": true,
+      "count": 367,
+      "updatedAt": "2026-10-09T17:47:41.079Z"
+    },
+    "actrunning": {
+      "ok": true,
+      "count": 193,
+      "updatedAt": "2026-10-09T17:47:43.837Z"
+    },
+    "banditrunning": {
+      "ok": true,
+      "count": 1150,
+      "updatedAt": "2026-10-09T17:47:53.034Z"
+    },
+    "districtvision": {
+      "ok": true,
+      "count": 630,
+      "updatedAt": "2026-10-09T17:47:57.701Z"
+    },
+    "doxarun": {
+      "ok": true,
+      "count": 76,
+      "updatedAt": "2026-10-09T17:47:59.740Z"
+    },
+    "sumsclub": {
+      "ok": true,
+      "count": 18,
+      "updatedAt": "2026-10-09T17:48:01.494Z"
+    },
+    "ymrtrackclub": {
+      "ok": true,
+      "count": 189,
+      "updatedAt": "2026-10-09T17:48:04.551Z"
     }
   },
-  "lastRun": "2026-10-09T17:45:50.481Z",
-  "total": 12616,
+  "lastRun": "2026-10-09T17:48:04.676Z",
+  "total": 16150,
   "unmapped": {
     "passasports: Löparkläder/Kläder": 171,
-    "kayo: Objekt": 4
+    "banditrunning: (none)": 43,
+    "saysky: Bundle": 13,
+    "ymrtrackclub: (none)": 9,
+    "districtvision: Mens": 6,
+    "banditrunning: Unclassified": 5,
+    "banditrunning: Bottoms": 5,
+    "actrunning: (none)": 4,
+    "kayo: Objekt": 4,
+    "banditrunning: Bottom": 2,
+    "banditrunning: Insurance": 1,
+    "banditrunning: Membership": 1,
+    "soarrunning: February 26 launches": 1,
+    "soarrunning: Custom Bundle": 1,
+    "sumsclub: (none)": 1
   }
 }

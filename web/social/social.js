@@ -1,6 +1,7 @@
 // Personal Shopper as a feed: one product per screen, swipe up for the next one (like Reels and
 // TikTok) and drag the photo left for its details. The photo's footer is the navigation: ☰ opens
-// a layer with colours, categories and sizes. Same data and palette matching as the shop (../).
+// a layer with colours, categories (and stores) and sizes. Same data, palette matching and
+// unchecked stores as the shop (../).
 // The product page opens in a new tab, from the photo or the "To the product page" link.
 
 import { TAXONOMY, label } from '../lib/taxonomy.mjs';
@@ -12,6 +13,7 @@ import {
 } from '../palette-filter.js';
 import {
   esc, sek, store, catLabel, displayTitle, thumb, sizeLetter, shortSize, historyHtml, loadFeed, loadDetails,
+  loadHiddenStores, saveHiddenStores, approx, localPrice,
 } from '../shop-utils.js';
 
 const BATCH = 6; // slides added at a time, a few ahead of the one on screen
@@ -66,6 +68,8 @@ const state = {
 readUrl();
 
 let all = [];
+let stores = []; // [{ id, name }] from the products, by name
+let hiddenStores = loadHiddenStores(); // unchecked in the shop or here
 let filtered = [];
 let rendered = 0; // slides in the DOM
 let current = 0; // slide on screen
@@ -104,13 +108,14 @@ const inCategory = (p, value) =>
   value ? value.split('+').some((v) => p.category === v || p.subcategory === v) : !HIDDEN_DEPTS.includes(p.category);
 const inPalette = (p) => passesExclude(p, palette.exclude) && (!targets.length || !!p._pm);
 const forGender = (p) => !state.gender || p.gender === state.gender || p.gender === 'unisex';
+const inStores = (p) => !hiddenStores.has(p.store);
 const fitsSizes = (p) => SIZE_GROUPS.every(({ id }) => {
   const want = state.sizes[id];
   if (!want.length || !p._sz.some((v) => v[id])) return true;
   return p._sz.some((v) => v.available && want.includes(v[id]));
 });
 // Everything except the category, so the category list can show what each one would give.
-const passesBase = (p) => p.available && inPalette(p) && forGender(p) && fitsSizes(p);
+const passesBase = (p) => p.available && inStores(p) && inPalette(p) && forGender(p) && fitsSizes(p);
 
 function computeMatches() {
   for (const p of all) p._pm = targets.length ? matchInfo(p, targets, palette.match, palette.exclude) : null;
@@ -140,6 +145,8 @@ async function init() {
   try {
     const [data, overrides] = await Promise.all([loadFeed(), loadColorOverrides()]);
     all = attachSwatches(data.products.filter((p) => p.images.length), overrides);
+    stores = [...new Map(all.map((p) => [p.store, { id: p.store, name: p.storeName }])).values()]
+      .sort((a, b) => a.name.localeCompare(b.name, 'sv'));
   } catch (err) {
     console.error(err);
     $('#loading').textContent = 'Could not load products. Try again in a minute.';
@@ -205,8 +212,9 @@ const showPhoto = (slide) => $('.pager', slide)?.scrollTo({ left: 0, behavior: m
 const onDetails = (slide) => !wide.matches && $('.pager', slide)?.scrollLeft > 0;
 
 function priceHtml(p) {
-  if (!p.compareAt) return `<span class="price">${sek(p.price)}</span>`;
-  return `<span class="price sale">${sek(p.price)}</span><s>${sek(p.compareAt)}</s><span class="off">−${Math.round((1 - p.price / p.compareAt) * 100)}%</span>`;
+  const title = p.local ? ` title="${esc(localPrice(p))}"` : '';
+  if (!p.compareAt) return `<span class="price"${title}>${approx(p)}${sek(p.price)}</span>`;
+  return `<span class="price sale"${title}>${approx(p)}${sek(p.price)}</span><s>${sek(p.compareAt)}</s><span class="off">−${Math.round((1 - p.price / p.compareAt) * 100)}%</span>`;
 }
 
 function dotsHtml(p, max = 6) {
@@ -279,6 +287,7 @@ function infoHtml(p, pos) {
     <p class="who"><span class="store-tag">${esc(p.storeName)}</span>${esc(p.brand)}</p>
     <h2 class="info-title">${esc(displayTitle(p))}</h2>
     <p class="price-row big">${priceHtml(p)}</p>
+    ${p.local ? `<p class="note">${esc(localPrice(p))}</p>` : ''}
     <a class="cta" href="${esc(p.url)}" target="_blank" rel="noopener">To the product page ${ICON.out}</a>
 
     ${p._swatches?.length || p.colors.length ? `<section>
@@ -351,7 +360,7 @@ function emptyHtml() {
   <article class="slide end">
     <div class="end-card">
       <p class="big">Nothing matches</p>
-      <p>No products in stock for these colours, categories and sizes.</p>
+      <p>No products in stock for these colours, categories and sizes${hiddenStores.size ? ` in the stores you've checked (under Categories)` : ''}.</p>
       <button class="btn primary" data-sheet="">Change filters</button>
       <button class="btn ghost" data-action="clear">Clear all</button>
     </div>
@@ -543,6 +552,13 @@ function bindSheet() {
     if (t.id === 'send-votes') { sendVotes(votes); return renderSheet(); }
     if (d.cat != null) return setFilters({ category: d.cat });
     if (d.gender != null) return setFilters({ gender: d.gender });
+    if (d.store) {
+      const hidden = new Set(hiddenStores);
+      hidden.has(d.store) ? hidden.delete(d.store) : hidden.add(d.store);
+      return setStores(hidden);
+    }
+    if (t.id === 'stores-all') return setStores([]);
+    if (t.id === 'stores-none') return setStores(stores.map((x) => x.id));
     if (d.size) {
       const [g, v] = d.size.split(':');
       const list = state.sizes[g];
@@ -581,6 +597,12 @@ function setPalette(change) {
   targets = targetColors(palette);
   computeMatches();
   saveSelection(palette);
+  changed();
+}
+
+function setStores(ids) {
+  hiddenStores = new Set(ids);
+  saveHiddenStores(hiddenStores);
   changed();
 }
 
@@ -687,6 +709,23 @@ function categoriesHtml() {
           ${d.subs.filter((s) => counts[s.id] || state.category === s.id).map((s) => chip(s.id, s.label, counts[s.id] ?? 0)).join('')}
         </div>
       </div>`).join('')}
+    </section>
+    ${storesHtml()}`;
+}
+
+// Every store is checked unless you uncheck it; the counts follow the other filters.
+function storesHtml() {
+  const counts = {};
+  for (const p of all) {
+    if (p.available && inPalette(p) && forGender(p) && fitsSizes(p) && inCategory(p, state.category)) counts[p.store] = (counts[p.store] ?? 0) + 1;
+  }
+  return `
+    <section class="group">
+      <div class="group-head">
+        <h3>Stores</h3>
+        <span><button id="stores-all" class="link">All</button> · <button id="stores-none" class="link">None</button></span>
+      </div>
+      <div class="chips">${stores.map((x) => `<button class="chip check" data-store="${esc(x.id)}" aria-pressed="${!hiddenStores.has(x.id)}">${esc(x.name)} <span class="n">${counts[x.id] ?? 0}</span></button>`).join('')}</div>
     </section>`;
 }
 
