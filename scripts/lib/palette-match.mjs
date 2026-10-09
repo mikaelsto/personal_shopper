@@ -3,33 +3,34 @@
 //
 // A product's colours come from its photo when Claude has read it (p.photoColor), otherwise
 // from the store's colour names. Matches are split into signature colours and neutrals, so
-// results can show "your colours" first and the everyday black/navy/cream after.
+// results can show "your colours" first and the everyday black/navy/cream after. A colour
+// that is closer to one of the season's "avoid" colours than to its palette colour is no match.
 
 import { hexToLab, deltaE, resolveColor } from './colors.mjs';
-import { PALETTES, BASIC_COLORS, paletteById } from './palettes.mjs';
+import { PALETTES, BASIC_COLORS, paletteById, allColors } from './palettes.mjs';
 
 export const TOLERANCE = { close: 10, broad: 16 }; // CIEDE2000
 
 // All named colours, so a single picked hex can be shown with its name.
-const NAMED = new Map([...PALETTES.flatMap((p) => [...p.colors, ...p.neutrals]), ...BASIC_COLORS].map((c) => [c.hex.toLowerCase(), c.name]));
+const NAMED = new Map([...PALETTES.flatMap(allColors), ...BASIC_COLORS].map((c) => [c.hex.toLowerCase(), c.name]));
 export const colorName = (hex) => NAMED.get(hex.toLowerCase()) ?? hex;
 
-// The colours a product is compared against; palette neutrals are flagged.
+const NEUTRAL_CHROMA = 12;
+const chroma = ([, a, b]) => Math.hypot(a, b);
+const avoidLabs = Object.fromEntries(PALETTES.map((p) => [p.id, p.avoid.map((c) => ({ ...c, lab: hexToLab(c.hex) }))]));
+
+// The colours a product is compared against: { name, hex, lab, neutral, palette?, group }.
+// Near-greyless palette colours (black, white, ivory, charcoal) count as neutrals in any group;
+// a colour you picked yourself always counts as one of your colours.
 export function targetColors(sel) {
-  const list = [
-    ...sel.palettes.flatMap((id) => [
-      ...paletteById[id].colors.map((c) => ({ ...c, neutral: false })),
-      ...(sel.neutrals ? paletteById[id].neutrals.map((c) => ({ ...c, neutral: true })) : []),
-    ]),
-    ...sel.colors.map((hex) => ({ name: colorName(hex), hex, neutral: false })),
+  const seasonal = sel.palettes.flatMap((id) => allColors(paletteById[id]).map((c) => {
+    const lab = hexToLab(c.hex);
+    return { ...c, lab, neutral: !!c.neutral || chroma(lab) < NEUTRAL_CHROMA, palette: id };
+  }));
+  return [
+    ...seasonal.filter((c) => sel.neutrals || !c.neutral),
+    ...sel.colors.map((hex) => ({ name: colorName(hex), hex, lab: hexToLab(hex), neutral: false, group: 'picked' })),
   ];
-  // A colour that is a signature colour anywhere in the selection counts as signature.
-  const byHex = new Map();
-  for (const c of list) {
-    const k = c.hex.toLowerCase();
-    if (!byHex.has(k) || !c.neutral) byHex.set(k, c);
-  }
-  return [...byHex.values()].map((c) => ({ ...c, lab: hexToLab(c.hex) }));
 }
 
 // Adds p._swatches = [{ name, hex, lab, source }] (one per colourway). The photo shows the
@@ -49,11 +50,13 @@ export function attachSwatches(products, overrides = {}) {
 
 // In close mode a pure neutral (white, grey, black) doesn't match a tinted one (cream,
 // mushroom, camel): that warm/cool difference is the point of a palette.
-const chroma = ([, a, b]) => Math.hypot(a, b);
 const sameTint = (x, y) => !((chroma(x) < 5 && chroma(y) > 10) || (chroma(y) < 5 && chroma(x) > 10));
 const fits = (s, t, match) => {
   const d = deltaE(s.lab, t.lab);
-  return d <= TOLERANCE[match] && (match === 'broad' || sameTint(s.lab, t.lab)) ? d : null;
+  if (d > TOLERANCE[match] || (match !== 'broad' && !sameTint(s.lab, t.lab))) return null;
+  // Closer to a colour this season should avoid (e.g. black for a Spring) -> not a match.
+  if (t.palette && avoidLabs[t.palette].some((a) => deltaE(s.lab, a.lab) < d)) return null;
+  return d;
 };
 
 // Best match of a product: { kind: 'signature'|'neutral', dE, swatch, target } or null.

@@ -21,7 +21,7 @@
   <main class="pal-main">
     <section class="pal-intro">
       <h2>Find clothes in your colours</h2>
-      <p>Pick one or more seasonal palettes, or tap single colours. Then browse the shop as usual: every category only shows products in your colours.</p>
+      <p>Each season has 45–60 colours: signature shades, a core palette, statement colours, everyday midtones, accents and neutrals, plus the colours to avoid. Select one or more seasons, or tap single colours. Then browse the shop as usual: every category only shows products in your colours.</p>
       <div class="pal-options">
         <label class="check"><input type="checkbox" id="opt-neutrals" checked> Include each palette's neutrals (black, navy, cream…)</label>
         <label class="pal-match">Colour match
@@ -33,11 +33,8 @@
       </div>
     </section>
 
-    <section class="pal-overview">
-      <h2>All seasons at a glance</h2>
-      <p class="muted">Signature colours, then the neutrals. Tap a season to select it, or tap single colours.</p>
-      <div id="overview" class="ov"></div>
-    </section>
+    <nav class="season-nav" id="season-nav" aria-label="Seasons"></nav>
+    <div class="pal-tools"><button id="expand-all" class="link">Show all colours for every season</button></div>
 
     <div id="families"></div>
 
@@ -46,7 +43,7 @@
       <div id="basic" class="swatch-row"></div>
     </section>
 
-    <p class="note pal-source">Signature colours: <a id="source" target="_blank" rel="noopener">personalcolorai.com</a>. Neutrals are standard colour-analysis guidance. Products are matched on the store's colour name, so a few may be off.</p>
+    <p class="note pal-source">Palettes compiled from <span id="sources"></span>. Products are matched on the colour read from their photo (or the store's colour name), so a few may be off: rate them 👍/👎 in the shop to improve matching.</p>
   </main>
 
   <div class="pal-bar">
