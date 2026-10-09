@@ -1,4 +1,4 @@
-//! Builds Runnista's static site for GitHub Pages into _site/:
+//! Builds Runnista's static site into _site/ (served by Vercel, see vercel.json):
 //!
 //!   web/*                    -> _site/            index.html (the feed) gets its first products
 //!                                                 pre-rendered, its CSS inline and preloads
@@ -32,8 +32,8 @@ fn main() -> Result<()> {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap().to_path_buf();
     let out = root.join("_site");
     let now = SystemTime::now().duration_since(UNIX_EPOCH)?;
-    // Cache-busting: GitHub Pages lets browsers cache files for 10 minutes, so after a deploy a
-    // new page could run with the previous CSS/JS. Every local CSS/JS reference gets the build.
+    // Cache-busting: every local CSS/JS reference gets the build, so a browser never mixes a new
+    // page with the previous CSS/JS, and the page's feed.json preload matches its fetch.
     let version: String = match env::var("GITHUB_SHA") {
         Ok(sha) if !sha.is_empty() => sha.chars().take(10).collect(),
         _ => base36(now.as_millis() as u64),

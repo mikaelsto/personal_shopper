@@ -2,11 +2,11 @@
 
 One place to browse running and fashion apparel from several stores. It has a shared category taxonomy, filters, side-by-side compare, price history, "find it elsewhere" links and per-store cart links.
 
-**Site:** https://mikaelsto.github.io/personal_shopper/
+**Site:** https://runnista.com (hosted on Vercel)
 
 The start page is the **feed**: mobile-first and Reels-style. You see one product per screen and swipe up for the next. Drag the photo left for its details. ☰ in the photo's footer opens saved products, colours, categories and sizes. The product page opens in a new tab, from the photo or from "To the product page". On a phone you can add it to the home screen, and it opens full screen like an app. The icon is `web/icon.svg`; after changing it, regenerate the PNGs (`icon-180.png` for iPhone, `icon-192.png` and `icon-512.png` for Android) with `swift scripts/render-icon.swift web/icon.svg web 180 192 512` on a Mac.
 
-The classic **grid** (filters, search, compare, add a store) is at [`grid.html`](https://mikaelsto.github.io/personal_shopper/grid.html). Old `/social/` links redirect to the start page and keep their filters.
+The classic **grid** (filters, search, compare, add a store) is at [`grid.html`](https://runnista.com/grid.html). Old `/social/` links redirect to the start page and keep their filters.
 
 ## Stores
 
@@ -71,7 +71,7 @@ Every store category is mapped onto one master tree (department › subcategory)
   - `meta.json`: the last run, plus per-store status and store categories that are still unmapped
 
   If a store fails, its previous data is kept.
-- `.github/workflows/update.yml` runs this **daily**, then commits the data and deploys to GitHub Pages.
+- `.github/workflows/update.yml` runs this **daily** and commits the data. Vercel rebuilds the site on every push to `main`, so the new data goes live a few minutes later.
   - **Manual update:** Actions → "Update products & deploy site" → Run workflow. You can optionally limit it to some stores, e.g. `kayo`.
 - `web/` is the static site: plain HTML, CSS and JavaScript modules.
 - `site/` is the **Rust build** that turns `web/` and `data/` into the deployed site (`_site/`) in about 2 seconds:

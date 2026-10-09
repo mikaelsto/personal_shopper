@@ -1,4 +1,6 @@
-name: Update products & deploy site
+# The site itself is hosted on Vercel (vercel.json), which rebuilds on every push to main,
+# including the data commit this workflow makes.
+name: Update products & test site build
 
 on:
   schedule:
@@ -14,8 +16,6 @@ on:
 
 permissions:
   contents: write
-  pages: write
-  id-token: write
 
 concurrency:
   group: update-and-deploy
@@ -23,7 +23,7 @@ concurrency:
 
 jobs:
   update:
-    # On a normal code push we only redeploy; scraping runs on schedule / manual trigger.
+    # On a normal code push we only test the build; scraping runs on schedule / manual trigger.
     if: github.event_name != 'push'
     runs-on: ubuntu-latest
     steps:
@@ -61,27 +61,19 @@ jobs:
             git push
           fi
 
-  deploy:
+  test:
     needs: update
     if: ${{ !cancelled() && (needs.update.result == 'success' || needs.update.result == 'skipped') }}
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
         with:
           ref: main # include the data commit made by the update job
-      # The site is built by the Rust crate in site/ (compact feed, pre-rendered start page).
+      # The site is built by the Rust crate in site/ (compact feed, pre-rendered start page);
+      # Vercel runs the same build. This catches a broken build or test before you notice it live.
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: site
       - run: cargo test --release --manifest-path site/Cargo.toml
       - run: cargo run --release --manifest-path site/Cargo.toml
-      - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: _site
-      - id: deployment
-        uses: actions/deploy-pages@v4
