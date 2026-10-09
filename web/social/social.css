@@ -196,6 +196,7 @@ button.size { cursor: pointer; }
 .size[aria-pressed=true] { background: #fff; color: var(--on-light); border-color: #fff; }
 .tags { display: flex; flex-wrap: wrap; gap: 6px; }
 .tag { padding: 4px 10px; border-radius: 999px; background: var(--surface); font-size: 13px; }
+.details { display: contents; }
 .materials { font-size: 14px; }
 .desc { white-space: pre-line; font-size: 14.5px; line-height: 1.55; color: #dcdcdf; }
 .photos { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }

@@ -4,6 +4,7 @@
 // The product page opens in a new tab, from the photo or the "To the product page" link.
 
 import { TAXONOMY, label } from '../lib/taxonomy.mjs';
+import { decodeProduct, detailsPath } from '../lib/feed.mjs';
 import { fabricLabel } from '../lib/normalize.mjs';
 import { PALETTES, FAMILIES, paletteById } from '../lib/palettes.mjs';
 import {
@@ -70,7 +71,10 @@ let rendered = 0; // slides in the DOM
 let current = 0; // slide on screen
 let palette = loadSelection(); // shared with the shop and the palette page
 let targets = targetColors(palette);
-let priceHistory = null; // data/price-history.json, loaded with the first details view
+let feedVersion = ''; // feed.json's generatedAt: keeps details files from the same build
+// Description, materials, more photos and price history per product id, from data/feed/…;
+// a Promise while loading. Fetched for the product on screen and the next one.
+const detailsOf = new Map();
 let dirty = false; // filters changed while the navigation layer was open
 const votes = store.get('paletteVotes', {}); // 👍/👎 "in my palette?", shared with the shop
 const voteOf = (p) => votes[`${p.id} ${voteKey(palette)}`]?.v ?? 0;
@@ -138,8 +142,9 @@ init();
 
 async function init() {
   try {
-    const [data, overrides] = await Promise.all([fetch(dataUrl('products.json')).then((r) => r.json()), loadColorOverrides()]);
-    all = attachSwatches(data.products.filter((p) => p.images.length), overrides);
+    const [data, overrides] = await Promise.all([fetch(dataUrl('feed.json')).then((r) => r.json()), loadColorOverrides()]);
+    feedVersion = data.generatedAt;
+    all = attachSwatches(data.products.map((p) => decodeProduct(p, data.stores)), overrides);
   } catch (err) {
     console.error(err);
     $('#loading').textContent = 'Could not load products. Try again in a minute.';
@@ -164,7 +169,8 @@ const io = new IntersectionObserver((entries) => {
     if (e.intersectionRatio >= 0.6) {
       current = Number(slide.dataset.i);
       if (current >= rendered - 3) appendBatch();
-      if (wide.matches) loadHistory(slide);
+      loadDetails(current);
+      loadDetails(current + 1);
     } else if (!e.isIntersecting) {
       // Back on the photo when you return to a product.
       const pager = $('.pager', slide);
@@ -235,7 +241,7 @@ function slideHtml(p, i) {
   const m = p._pm;
   const hint = i === 0 && !wide.matches && !store.get('feedHintSeen', false);
   return `
-  <article class="slide ${hint ? 'hint' : ''}" data-i="${i}" aria-roledescription="product" aria-label="${esc(title)}, ${pos}">
+  <article class="slide ${hint ? 'hint' : ''}" data-i="${i}" data-id="${esc(p.id)}" aria-roledescription="product" aria-label="${esc(title)}, ${pos}">
     <div class="pager">
       <section class="pane media">
         <a class="shot" href="${esc(p.url)}" target="_blank" rel="noopener" draggable="false" title="To the product page at ${esc(p.storeName)}">
@@ -299,19 +305,7 @@ function infoHtml(p, pos) {
     <section>
       <h3>About</h3>
       <div class="tags">${tags.map((t) => `<span class="tag">${esc(t)}</span>`).join('')}</div>
-      ${p.materials.length ? `<p class="materials">${esc(p.materials.join(', '))}</p>` : ''}
-      ${p.description ? `<p class="desc">${esc(p.description)}</p>` : ''}
-    </section>
-
-    ${p.images.length > 1 ? `<section>
-      <h3>More photos</h3>
-      <div class="photos">${p.images.slice(1).map((src) =>
-        `<a href="${esc(p.url)}" target="_blank" rel="noopener" draggable="false"><img src="${esc(thumb(src, 400))}" alt="" loading="lazy" draggable="false"></a>`).join('')}</div>
-    </section>` : ''}
-
-    <section>
-      <h3>Price history</h3>
-      <div class="history" data-history="${esc(p.id)}">…</div>
+      ${detailsHtml(p, detailsOf.get(p.id))}
     </section>
 
     <section>
@@ -320,7 +314,6 @@ function infoHtml(p, pos) {
         <a class="cta ghost" href="${esc(lens)}" target="_blank" rel="noopener">Google Lens ${ICON.out}</a>
         <a class="cta ghost" href="${esc(shopping)}" target="_blank" rel="noopener">Google Shopping ${ICON.out}</a>
       </div>
-      <p class="note">First seen ${esc(p.firstSeen ?? '–')} · last checked ${esc(p.lastSeen ?? p.collectedAt ?? '–')}</p>
     </section>
 
     <button class="next" data-action="next">Next product ${ICON.down}</button>`;
@@ -392,12 +385,33 @@ function fit(img) {
   img.classList.toggle('fill', Math.abs(ratio - 1) < 0.06);
 }
 
-async function loadHistory(slide) {
-  const el = $('[data-history]', slide);
-  if (!el || el.dataset.done) return;
-  el.dataset.done = '1';
-  priceHistory ??= fetch(dataUrl('price-history.json')).then((r) => r.json()).catch(() => ({}));
-  el.innerHTML = historyHtml((await priceHistory)[el.dataset.history] ?? []);
+// The part of the details that comes from the product's own file (placeholder until it's loaded).
+function detailsHtml(p, d) {
+  if (!d || d instanceof Promise) return '<div class="details" data-details><p class="note">Loading the description…</p></div>';
+  return `<div class="details">
+    ${d.materials ? `<p class="materials">${esc(d.materials.join(', '))}</p>` : ''}
+    ${d.description ? `<p class="desc">${esc(d.description)}</p>` : ''}
+    ${d.images ? `<section>
+      <h3>More photos</h3>
+      <div class="photos">${d.images.map((src) =>
+        `<a href="${esc(p.url)}" target="_blank" rel="noopener" draggable="false"><img src="${esc(thumb(src, 400))}" alt="" loading="lazy" draggable="false"></a>`).join('')}</div>
+    </section>` : ''}
+    <section>
+      <h3>Price history</h3>
+      <div class="history">${historyHtml(d.history ?? [])}</div>
+      <p class="note">First seen ${esc(d.firstSeen ?? '–')} · last checked ${esc(d.lastSeen ?? '–')}</p>
+    </section>
+  </div>`;
+}
+
+function loadDetails(i) {
+  const p = filtered[i];
+  if (!p || detailsOf.has(p.id)) return;
+  const url = dataUrl(`${detailsPath(p.id)}?v=${encodeURIComponent(feedVersion)}`);
+  detailsOf.set(p.id, fetch(url).then((r) => (r.ok ? r.json() : {})).then((d) => {
+    detailsOf.set(p.id, d);
+    feed.querySelectorAll(`.slide[data-id="${CSS.escape(p.id)}"] [data-details]`).forEach((el) => { el.outerHTML = detailsHtml(p, d); });
+  }, () => detailsOf.delete(p.id))); // offline: try again next time it's on screen
 }
 
 function vote(slide, btn) {
@@ -448,7 +462,7 @@ function bindFeed() {
       store.set('feedHintSeen', true);
       feed.querySelectorAll('.slide.hint').forEach((s) => s.classList.remove('hint'));
     }
-    if (pager.scrollLeft > pager.clientWidth / 2) loadHistory(pager.closest('.slide'));
+    if (pager.scrollLeft > pager.clientWidth / 2) loadDetails(Number(pager.closest('.slide').dataset.i));
   }, { capture: true, passive: true });
 
   feed.addEventListener('load', (e) => { if (e.target.matches?.('.shot img')) fit(e.target); }, true);

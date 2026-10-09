@@ -55,6 +55,7 @@ Every store category is mapped onto one master tree (department › subcategory)
 - `.github/workflows/update.yml` runs this **daily**, then commits the data and deploys to GitHub Pages.
   - **Manual update:** Actions → "Update products & deploy site" → Run workflow. You can optionally limit it to some stores, e.g. `kayo`.
 - `web/` is the static site, with no build step.
+- The feed (`web/social/`) loads a slim `feed.json`: about 300 KB gzipped instead of the 1.8 MB catalogue. Each product's description, extra photos and price history sit in their own small file (`feed/<store>/<id>.json`), fetched only when that product is on screen. Both are generated from `products.json` by `scripts/build-site.mjs` at deploy, and on the fly by `npm run dev`.
 - `scripts/lib/` holds the taxonomy and Shopify mapping, shared by the update job and the site.
 
 ## Run locally
