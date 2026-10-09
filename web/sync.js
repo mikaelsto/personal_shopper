@@ -5,7 +5,7 @@
 // isn't slowed down.
 
 import { SUPABASE_URL, SUPABASE_KEY } from './config.js';
-import { store } from './shop-utils.js';
+import { store, home } from './shop-utils.js';
 
 const LIB = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/+esm';
 const SESSION_KEY = `sb-${new URL(SUPABASE_URL).hostname.split('.')[0]}-auth-token`;
@@ -123,7 +123,7 @@ export const syncVote = (key, x) => write((sb) => (x
 // Emails a sign-in link that comes back to this page.
 export async function signIn(email) {
   const sb = await getClient();
-  const { error } = await sb.auth.signInWithOtp({ email, options: { emailRedirectTo: location.origin + (location.pathname.startsWith('/p/') ? '/' : location.pathname) } });
+  const { error } = await sb.auth.signInWithOtp({ email, options: { emailRedirectTo: location.origin + (location.pathname.includes('/p/') ? home : location.pathname) } });
   if (error) throw error;
 }
 

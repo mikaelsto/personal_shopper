@@ -6,9 +6,15 @@ One place to browse running and fashion apparel from several stores. It has a sh
 
 The start page is the **feed**: mobile-first and Reels-style. You see one product per screen and swipe up for the next. First-time visitors start on an opening card that asks two optional questions (women's or men's wear, colour palette); it shows until you've swiped past it once. Each product sits on a light tint of its own colour. Swipe sideways through its photos, then on to its details; double-tap a photo to ♥ it. "Shop now at <store>" opens the store's product page in a new tab. ☰ in the photo's footer opens saved products, colours, categories and sizes. On a phone you can add it to the home screen, and it opens full screen like an app. The icon is `web/icon.svg`; after changing it, regenerate the PNGs (`icon-180.png` for iPhone, `icon-192.png` and `icon-512.png` for Android) with `swift scripts/render-icon.swift web/icon.svg web 180 192 512` on a Mac.
 
-Every product also has its **own page**, `/p/<store>/<name>-<id>` (e.g. `/p/loplabbet/nike-alphafly-next-3-157109612`): the same feed, starting with that product and followed by more of the same kind. It has its own title, description, link preview (Open Graph) and schema.org Product data, and is listed in `sitemap.xml`. The address bar follows the product on screen, so a copied link, ↑ Share, or a reload brings you back to it. A link to a product that's no longer listed shows `404.html`.
+Every product also has its **own page**, `/<market>/p/<store>/<name>-<id>` (e.g. `/en-se/p/loplabbet/nike-alphafly-next-3-157109612`): the same feed, starting with that product and followed by more of the same kind. It has its own title, description, link preview (Open Graph) and schema.org Product data, and is listed in `sitemap.xml`. The address bar follows the product on screen, so a copied link, ↑ Share, or a reload brings you back to it. A link to a product that's no longer listed shows `404.html`.
 
-The classic **grid** (filters, search, compare, add a store) is at [`grid.html`](https://runnista.com/grid.html). Old `/social/` links redirect to the start page and keep their filters.
+**Markets.** The site lives under `/en-se/` (Sweden), `/en-eu/` (the rest of the EU) and `/en-us/` (USA), all set up in `vercel.json`:
+
+- `runnista.com/` redirects (temporarily) to the market you last visited (the `market` cookie, set by `web/shop-utils.js`); without that cookie, it goes by your country (Vercel's `x-vercel-ip-country`): Sweden → `/en-se/`, USA → `/en-us/`, everyone else → `/en-eu/`. Only `/` redirects, never a market's own pages.
+- All three markets serve the same files for now (a rewrite to the site's root), so their canonical links and `sitemap.xml` name the `/en-se/` addresses.
+- Addresses from before the markets (`/p/…`, `/grid`, `/palettes`, `/social/`) redirect permanently (301) to `/en-se/`.
+
+The classic **grid** (filters, search, compare, add a store) is at [`grid.html`](https://runnista.com/en-se/grid). Old `/social/` links redirect to the start page and keep their filters.
 
 ## Stores
 
@@ -76,6 +82,7 @@ Every store category is mapped onto one master tree (department › subcategory)
 - `.github/workflows/update.yml` runs this **daily** and commits the data. Vercel rebuilds the site on every push to `main`, so the new data goes live a few minutes later.
   - **Manual update:** Actions → "Update products & deploy site" → Run workflow. You can optionally limit it to some stores, e.g. `kayo`.
 - `web/` is the static site: plain HTML, CSS and JavaScript modules.
+- **Analytics.** `web/consent.js` (in every page's `<head>`) loads Google Tag Manager `GTM-M6V5L7BC`, which sends to GA4 `G-VBFEVVPFY2` (both in mikael@bogg.se). Consent Mode v2: GA gets cookieless pings until you accept the banner; Cookies in the Saved tab re-opens it. Tags are managed in GTM, not in the code.
 - `site/` is the **Rust build** that turns `web/` and `data/` into the deployed site (`_site/`) in about 2 seconds:
   - **Compact feed.** `feed.json` is about 3.3 MB (615 KB gzipped), down from 9.5 MB (876 KB gzipped) as plain JSON. Each product is one row. Brands, categories, sizes, colours and dates are shared through one word table. Links and photos are stored without the prefix they share within a store. `scripts/lib/feed.mjs` decodes it in the browser.
   - **Details on demand.** Each product's description, photos, price history and cart variant ids sit in their own small file (`feed/<store>/<id>.json`). It's fetched when the product is on screen or opened. Search words (`feed-search.json`) load the first time you search.

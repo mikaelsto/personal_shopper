@@ -12,6 +12,15 @@ export const store = {
   set: (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
 };
 
+// The market this page is in, from the address: /en-se/, /en-eu/ or /en-us/ (see vercel.json:
+// every market serves the same files for now). `home` is its start page ("/" outside a market,
+// as on `npm run dev`'s localhost:8080/). The market is kept in a cookie, so runnista.com/ takes
+// you back to it instead of going by your location.
+export const MARKETS = ['en-se', 'en-eu', 'en-us'];
+export const market = MARKETS.find((m) => new RegExp(`^/${m}(/|$)`).test(location.pathname)) ?? '';
+export const home = market ? `/${market}/` : '/';
+if (market) document.cookie = `market=${market}; path=/; max-age=31536000; samesite=lax; secure`;
+
 // Stores you've unchecked, shared by the shop and the feed. Saved as the hidden ones, so a store
 // added later shows up checked.
 export const loadHiddenStores = () => new Set(store.get('hiddenStores', []));

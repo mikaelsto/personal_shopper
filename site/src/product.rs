@@ -3,6 +3,9 @@
 //! products) and followed by more like it. Its head is what search engines and link previews
 //! read: title, description, canonical link, Open Graph tags and schema.org Product data.
 //! Plus sitemap.xml, listing the start page and every product page.
+//!
+//! Every market (/en-se/, /en-eu/, /en-us/, see vercel.json) serves these same files for now, so
+//! the canonical links and the sitemap name the Swedish market's addresses.
 
 use crate::feed::Product;
 use crate::names::clean_name;
@@ -11,6 +14,8 @@ use serde_json::json;
 use std::fmt::Write;
 
 pub const SITE: &str = "https://runnista.com";
+/// The market whose addresses are canonical (see above).
+pub const CANONICAL: &str = "en-se";
 
 /// productPath() in scripts/lib/feed.mjs: "loplabbet:156650213" -> "p/loplabbet/nike-alphafly-next-3-kolfiberskor-156650213".
 pub fn product_path(p: &Product) -> String {
@@ -133,7 +138,7 @@ fn structured_data(p: &Product, url: &str) -> String {
 
 /// The page's own head (title, description, canonical link, link previews, structured data).
 fn head(p: &Product, path: &str) -> String {
-    let url = format!("{SITE}/{path}");
+    let url = format!("{SITE}/{CANONICAL}/{path}");
     let name = full_name(p);
     let desc = description(p);
     let image = thumb(p.main_image().expect("product pages have a photo"), 1080);
@@ -187,9 +192,9 @@ pub fn pages(template: &str, products: &[Product], total: usize) -> Vec<(String,
 
 pub fn sitemap(pages: &[(String, String)]) -> String {
     let mut xml = String::from("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\">\n");
-    let _ = writeln!(xml, "<url><loc>{SITE}/</loc></url>");
+    let _ = writeln!(xml, "<url><loc>{SITE}/{CANONICAL}/</loc></url>");
     for (file, _) in pages {
-        let _ = writeln!(xml, "<url><loc>{SITE}/{}</loc></url>", esc(file.trim_end_matches(".html")));
+        let _ = writeln!(xml, "<url><loc>{SITE}/{CANONICAL}/{}</loc></url>", esc(file.trim_end_matches(".html")));
     }
     xml.push_str("</urlset>\n");
     xml
@@ -209,6 +214,13 @@ mod tests {
         assert_eq!(slug("aaaa bbbb cccc", 11), "aaaa-bbbb");
         assert_eq!(slug("abcdefghijkl", 5), "abcde");
         assert_eq!(slug("日本 shoe", 70), "shoe");
+    }
+
+    #[test]
+    fn sitemap_lists_the_canonical_market() {
+        let xml = sitemap(&[("p/satisfy/shorts-1.html".into(), String::new())]);
+        assert!(xml.contains("<loc>https://runnista.com/en-se/</loc>"));
+        assert!(xml.contains("<loc>https://runnista.com/en-se/p/satisfy/shorts-1</loc>"));
     }
 
     #[test]

@@ -6,9 +6,33 @@
   "cleanUrls": true,
   "redirects": [
     {
-      "source": "/social",
-      "destination": "/social/",
-      "permanent": true
-    }
+      "source": "/",
+      "has": [{ "type": "cookie", "key": "market", "value": "(?<market>en-se|en-eu|en-us)" }],
+      "destination": "/:market/",
+      "permanent": false
+    },
+    {
+      "source": "/",
+      "has": [{ "type": "header", "key": "x-vercel-ip-country", "value": "SE" }],
+      "destination": "/en-se/",
+      "permanent": false
+    },
+    {
+      "source": "/",
+      "has": [{ "type": "header", "key": "x-vercel-ip-country", "value": "US" }],
+      "destination": "/en-us/",
+      "permanent": false
+    },
+    { "source": "/", "destination": "/en-eu/", "permanent": false },
+    { "source": "/p/:path*", "destination": "/en-se/p/:path*", "statusCode": 301 },
+    { "source": "/grid", "destination": "/en-se/grid", "statusCode": 301 },
+    { "source": "/grid.html", "destination": "/en-se/grid", "statusCode": 301 },
+    { "source": "/palettes", "destination": "/en-se/palettes", "statusCode": 301 },
+    { "source": "/palettes.html", "destination": "/en-se/palettes", "statusCode": 301 },
+    { "source": "/social", "destination": "/en-se/", "statusCode": 301 },
+    { "source": "/social/", "destination": "/en-se/", "statusCode": 301 }
+  ],
+  "rewrites": [
+    { "source": "/(en-se|en-eu|en-us)/:path*", "destination": "/:path*" }
   ]
 }

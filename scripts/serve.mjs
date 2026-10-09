@@ -1,6 +1,7 @@
 // Local preview on http://localhost:8080 — serves web/, data/ and scripts/lib/ live (no rebuild needed).
 // The slim data (data/feed.json, data/feed/…, data/feed-search.json) comes from the Rust build
 // (site/), which runs again when products.json or price-history.json is newer than its output.
+// Markets (/en-se/ …) are served like the root, as on Vercel; there's no redirect by country here.
 // The start page shows the spinner instead of pre-rendered products: run `npm run build` and
 // serve _site/ to see exactly what's deployed. Product pages (/p/…) come from the last build.
 import { createServer } from 'node:http';
@@ -39,7 +40,9 @@ async function ensureFeed() {
 }
 
 createServer(async (req, res) => {
-  const path = normalize(decodeURIComponent(new URL(req.url, 'http://x').pathname)).replace(/^(\.\.[/\\])+/, '');
+  const path = normalize(decodeURIComponent(new URL(req.url, 'http://x').pathname)).replace(/^(\.\.[/\\])+/, '')
+    // /en-se/…, /en-eu/… and /en-us/… are the same site (the rewrite in vercel.json).
+    .replace(/^\/en-(se|eu|us)(?=\/|$)/, '') || '/';
   const file = resolve(path);
   try {
     if (/^\/data\/feed[-./]/.test(path)) await ensureFeed();

@@ -32,13 +32,14 @@ pub fn hidden_departments(taxonomy: &str) -> Vec<String> {
     re.captures_iter(taxonomy).map(|c| c[1].to_string()).collect()
 }
 
-/// The start page's link preview and canonical address (product pages have their own).
-const HOME_HEAD: &str = r#"  <link rel="canonical" href="https://runnista.com/">
+/// The start page's link preview and canonical address (product pages have their own). Every
+/// market serves the same page, so they all name the Swedish one (product::CANONICAL).
+const HOME_HEAD: &str = r#"  <link rel="canonical" href="https://runnista.com/en-se/">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Runnista">
   <meta property="og:title" content="Runnista – running gear from many stores, one swipe at a time">
   <meta property="og:description" content="Running and fashion apparel from many stores, one product per screen.">
-  <meta property="og:url" content="https://runnista.com/">
+  <meta property="og:url" content="https://runnista.com/en-se/">
   <meta property="og:image" content="https://runnista.com/icon-512.png">
 "#;
 
@@ -73,14 +74,15 @@ pub fn finish(out: &Path, version: &str, first: &Prerendered) -> crate::Result<(
 }
 
 /// The product pages' template, from the start page's source (web/index.html) and the copied
-/// scripts in `out`: `<base href="/">` (the pages sit in p/<store>/), the stylesheet linked
+/// scripts in `out`: `<base href="../../">` (the pages sit in <market>/p/<store>/, so that's the
+/// market's start page, see vercel.json), the stylesheet linked
 /// instead of inline (one cached file instead of ~20 KB in each of ~16 000 pages), and
 /// `<!--head-->` (title, description, previews) and `<!--prerender-->` (the product) to fill in.
 /// The opening card (#intro) is left out: you came for the product.
 pub fn product_template(index_src: &str, out: &Path, version: &str) -> crate::Result<String> {
     let mut html = index_src.to_string();
     for (from, to) in [
-        ("<meta charset=\"utf-8\">", "<meta charset=\"utf-8\">\n  <base href=\"/\">"),
+        ("<meta charset=\"utf-8\">", "<meta charset=\"utf-8\">\n  <base href=\"../../\">"),
         ("<title>Runnista</title>", "<!--head-->"),
         (" data-inline>", ">"),
     ] {

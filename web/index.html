@@ -20,12 +20,12 @@
     // The build pre-renders the first products of the default feed (no filters) into #feed, so
     // they show before any script or data has loaded. With your own filters (in the link or saved
     // in this browser) they'd be the wrong products: hide them and show the spinner instead.
-    // A product's own page (/p/…) always starts with its product, whatever your filters.
+    // A product's own page (/en-se/p/…) always starts with its product, whatever your filters.
     // The opening card (#intro) shows until you've swiped past it once.
     (() => {
       const get = (k) => { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } };
       if (get('introSeen')) document.documentElement.classList.add('no-intro');
-      if (location.pathname.startsWith('/p/')) return;
+      if (/^(\/en-\w\w)?\/p\//.test(location.pathname)) return;
       const q = new URLSearchParams(location.search);
       const f = get('feedFilters') ?? {}, pal = get('paletteSelection') ?? {};
       const custom = ['cat', 'for', 'size', 'palette', 'color', 'exclude'].some((k) => q.get(k))

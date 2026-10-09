@@ -18,7 +18,7 @@ import {
 } from './palette-filter.js';
 import {
   esc, sek, store, catLabel, displayTitle, thumb, srcset, sizeLetter, shortSize, historyHtml, loadFeed, loadDetails,
-  loadHiddenStores, saveHiddenStores, approx, localPrice, loadSaved, isSaved, toggleSaved,
+  loadHiddenStores, saveHiddenStores, approx, localPrice, loadSaved, isSaved, toggleSaved, home,
 } from './shop-utils.js';
 import { productPath, fullName } from './lib/feed.mjs';
 import { hexToLab } from './lib/colors.mjs';
@@ -277,15 +277,16 @@ function appendBatch() {
   rendered = end;
 }
 
-// The start page stays "/" on its first product; after that the address is the product on screen.
+// The start page stays "/en-se/" (its market) on its first product; after that the address is
+// the product on screen.
 function syncUrl() {
   const p = filtered[current];
-  const path = p && (current > 0 || pinned) ? `/${productPath(p)}` : '/';
+  const path = p && (current > 0 || pinned) ? `${home}${productPath(p)}` : home;
   if (path !== location.pathname) history.replaceState(null, '', path + location.search);
 }
 
 async function share(p) {
-  const url = `${location.origin}/${productPath(p)}`;
+  const url = `${location.origin}${home}${productPath(p)}`;
   if (navigator.share) {
     try { await navigator.share({ title: fullName(p), url }); } catch {} // cancelled
     return;
@@ -407,7 +408,7 @@ function slideHtml(p, i) {
       <section class="pane media">
         <div class="shots">${shotHtml(p, p.images[0], i)}${p.details ? moreShotsHtml(p) : ''}</div>
         ${p.details ? shotDotsHtml(p) : ''}
-        <a class="wordmark" href="/" aria-label="Runnista, start page">runnista</a>
+        <a class="wordmark" href="${home}" aria-label="Runnista, start page">runnista</a>
         <button class="peek" data-action="details" aria-label="Product details">${ICON.left}</button>
         <button class="share" data-action="share" aria-label="Share">${ICON.share}</button>
         ${saveBtnHtml(p, 'save')}
