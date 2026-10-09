@@ -29,5 +29,33 @@
     "language": "sv-SE",
     "imageBase": "https://images.ka-yo.com",
     "addedAt": "2026-10-09"
+  },
+  {
+    "id": "loplabbet",
+    "name": "Löplabbet",
+    "origin": "https://www.loplabbet.se",
+    "platform": "intersport",
+    "base": "https://www.loplabbet.se",
+    "listings": [
+      "/herr",
+      "/dam",
+      "/lopning"
+    ],
+    "addedAt": "2026-10-09"
+  },
+  {
+    "id": "passasports",
+    "name": "Passa Sports",
+    "origin": "https://www.passasports.se",
+    "platform": "import",
+    "base": "https://www.passasports.se/running",
+    "collector": "scripts/collectors/passasports.js",
+    "listings": [
+      "/running/loparskor",
+      "/running/loparklader",
+      "/running/loparstrumpor"
+    ],
+    "note": "Behind Cloudflare: collected with Claude in Chrome (only Löparskor, Löparkläder, Löparstrumpor)",
+    "addedAt": "2026-10-09"
   }
 ]

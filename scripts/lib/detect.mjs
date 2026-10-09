@@ -4,6 +4,7 @@
 import { BROWSER_UA, get, getJson, getText } from './http.mjs';
 import { sitemapUrls, parseProductPage } from '../adapters/jsonld.mjs';
 import { fetchGeins } from '../adapters/geins.mjs';
+import { extractSearchResult } from '../adapters/intersport.mjs';
 
 export function storeId(hostname) {
   const label = hostname.replace(/^www\./, '').split('.')[0];
@@ -60,6 +61,25 @@ export async function detectStore(rawUrl, name) {
     } catch (err) {
       log.push(`Geins API failed (${err.message})`);
     }
+  }
+
+  // 2b. Intersport-group storefront (Löplabbet, …): listings embed `window.searchResult`.
+  if (/cdn\.intersport\.se|window\.searchResult\s*=|window\.__INITIAL__STATE__\s*=/.test(page)) {
+    const path = url.pathname.replace(/\/+$/, '');
+    const candidates = path ? [path] : ['/herr', '/dam', '/barn'];
+    const listings = [];
+    for (const l of candidates) {
+      try {
+        const result = extractSearchResult(await getText(`${origin}${l}?hits=1`, { ua: BROWSER_UA }));
+        if (result?.stats?.totalHits) listings.push(l);
+      } catch {
+        // listing missing on this store
+      }
+    }
+    if (listings.length) {
+      return { ...common, platform: 'intersport', base: origin, listings, log: [...log, `Intersport storefront: listings ${listings.join(', ')}`] };
+    }
+    log.push('Intersport storefront detected, but no product listings found');
   }
 
   // 3. Sitemap + JSON-LD on product pages

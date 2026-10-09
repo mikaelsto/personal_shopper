@@ -31,6 +31,7 @@ export const TAXONOMY = [
     ['shell-pants', 'Shell & rain pants'],
     ['skirts', 'Skirts'],
     ['base-layers', 'Base layer bottoms'],
+    ['underwear', 'Underwear'],
   ] },
   { id: 'footwear', label: 'Footwear', subs: [
     ['road-running', 'Road running'],
@@ -52,6 +53,9 @@ export const TAXONOMY = [
     ['sunglasses', 'Sunglasses & eyewear'],
     ['watches', 'Watches'],
     ['hydration', 'Hydration'],
+    ['lights', 'Headlamps & running lights'],
+    ['insoles-care', 'Insoles & shoe care'],
+    ['protection', 'Supports, protection & anti-chafe'],
     ['other', 'Other accessories'],
   ] },
   { id: 'bags', label: 'Bags', subs: [
@@ -68,6 +72,9 @@ export const TAXONOMY = [
     ['furniture', 'Furniture'],
     ['lighting', 'Lighting'],
     ['books-media', 'Books & magazines'],
+    ['nutrition', 'Sports nutrition'],
+    ['fitness', 'Fitness equipment'],
+    ['electronics', 'Headphones & electronics'],
     ['other', 'Other gear'],
   ] },
 ].map((d) => ({ ...d, subs: d.subs.map(([id, label]) => ({ id: `${d.id}/${id}`, label })) }));
@@ -87,11 +94,17 @@ const RULES = [
   // Bags
   ['bags/backpacks', /\b(backpacks?|rucksacks?|daypacks?)\b|ryggsäck/],
   ['bags/duffels-totes', /\b(duffels?|duffel bags?|totes?|tote ?bags?|weekend ?bags?)\b|toteväsk/],
-  ['bags/small-bags', /\b(hip ?bags?|bum ?bags?|waist ?packs?|belt ?bags?|running belts?|race belts?|slings?|crossbody|pouch(es)?)\b|små väskor/],
+  ['bags/small-bags', /\b(hip ?bags?|bum ?bags?|waist ?packs?|belt ?bags?|running belts?|race belts?|slings?|crossbody|pouch(es)?)\b|små väskor|midjeväsk|mobilhållare/],
   ['bags/small-bags', /\bbags?\b|väskor|väska/, { generic: true }],
 
   // Accessories
-  ['accessories/hydration', /\b(flasks?|soft ?flasks?|bottles?|hydration|hydration vests?)\b|vattenflask|hydrering|löparväst/],
+  ['accessories/hydration', /\b(flasks?|soft ?flasks?|bottles?|hydration|hydration vests?)\b|vattenflask|flaskor|vätskebälte|vätskeväst|hydrering|löparväst/],
+  ['accessories/lights', /\b(headlamps?|head ?torch(es)?|running lights?|safety lights?|clip ?lights?)\b|pannlamp|löparlamp|lampor\b/],
+  ['accessories/insoles-care', /\b(insoles?|shoe ?care|laces|impregnat\w*|waterproofing spray)\b|sulor|skosulor|skotillbehör|sko och klädvård|skosnören|impregner/],
+  ['accessories/protection', /\b((knee|ankle|wrist|calf) (supports?|guards?|braces?)|shin ?guards?|anti-?chafe|body ?glide)\b|skydd|knäskydd|benskydd|antiskav|stödskydd/],
+  ['gear/nutrition', /\b(energy gels?|sports? drinks?|electrolytes?|protein (bars?|powder)|energy bars?|supplements?)\b|energi & sportdryck|sportdryck|kosttillskott|energigel|vätskeersättning/],
+  ['gear/fitness', /\b(yoga ?mats?|foam ?rollers?|resistance bands?|kettlebells?|dumbbells?|treadmills?|massage (balls?|guns?))\b|träningsredskap|yogamatt|löpband|foamroller|massageboll/],
+  ['gear/electronics', /\b(headphones?|earbuds?|earphones?|phone (holders?|cases?|armbands?))\b|hörlurar|mobiltillbehör|elektronik(?!\/pulsklock)/],
   ['accessories/socks', /\bsocks?\b|strump/],
   ['accessories/gloves', /\b(gloves?|mittens?|mitts?)\b|handskar|vantar/],
   ['accessories/sunglasses', /\b(sunglasses|eyewear|goggles)\b|glasögon/],
@@ -113,19 +126,22 @@ const RULES = [
   ['gear/other', /\b(objects?|gift ?card|ski & snow)\b|prototype|objekt|presentkort/, { generic: true }],
 
   // Footwear (before apparel: "trail running shoe" must not become a top)
-  ['footwear/trail-running', /\btrail ?(running )?(shoes?|sko)|trailrunning ?sko|trailsko|\bspeedgoat|\bwildhorse|\bperegrine/],
+  ['footwear/trail-running', /\btrail ?(running )?(shoes?|sko)|trailrunning ?sko|trailsko|löparskor\/terräng|terrängsko|terränglöp|\bspeedgoat|\bwildhorse|\bperegrine/],
   ['footwear/hiking', /\bhiking (shoes?|boots?)|\bapproach shoes?|vandringssk/],
   ['footwear/slides-sandals', /\b(slides?|sandals?|flip-?flops?|clogs?|mules?)\b|tofflor|sandal/],
   ['footwear/court', /\b(tennis|court|padel) shoes?\b|tennissk|padelsk/],
   ['footwear/boots', /\bboots?\b|kängor|känga/],
-  ['footwear/road-running', /\b(running shoes?|racing shoes?|racers?|spikes?|adizero|adios|boston \d+|evo ?sl|super ?shoes?)\b|löparsk/],
-  ['footwear/casual', /\b(sneakers?|lifestyle shoes?|casual shoes?)\b|vardagssk/],
+  ['footwear/road-running', /\b(running shoes?|racing shoes?|racing flats?|spikes?|adizero|adios|boston \d+|evo ?sl|super ?shoes?)\b|kolfibersk|tävlingssk|spikskor|friidrottssk/],
+  // Plain "löparskor" (running shoes) is in almost every Löplabbet title, so it's broad:
+  // a store category like "Löparskor/Terräng" (trail) must be able to override it.
+  ['footwear/road-running', /löparsk/, { weight: 1.5 }],
+  ['footwear/casual', /\b(sneakers?|lifestyle shoes?|casual shoes?|walking shoes?)\b|vardagssk|walkingsk|promenad/],
   ['footwear/other', /\b(shoes?|footwear|trainers?)\b|\bskor\b/, { generic: true }],
 
   // Outerwear (specific types before mid layers; generic jackets last)
   ['outerwear/insulated', /\b(down (jackets?|vests?|parkas?|hood(ie|y)s?)|puffers?|insulated (jackets?|hood(ie|y)s?|vests?)|padding (jkt|jackets?)|padded jackets?|parkas?)\b|dunjack|dunväst|\bdun\b/],
   ['outerwear/shell', /\b(shell jackets?|hard ?shells?|3l (jackets?|shells?)|gore-?tex (jackets?|shells?))\b|skaljack/],
-  ['outerwear/wind-rain', /\b(wind ?(jackets?|breakers?|shells?|anoraks?|hood(ie|y)s?|smocks?)|windbreakers?|rain ?(jackets?|coats?|shells?)|anoraks?|waterproof jackets?)\b|vindjack|regnjack|vind & regn|vind- och regn/],
+  ['outerwear/wind-rain', /\b(wind ?(jackets?|breakers?|shells?|anoraks?|hood(ie|y)s?|smocks?)|windbreakers?|rain ?(jackets?|coats?|shells?)|anoraks?|waterproof jackets?)\b|vindjack|regnjack|löparjack|vind & regn|vind- och regn/],
   ['outerwear/vests', /\b(gilets?|body ?warmers?|wind ?vests?|insulated vests?)\b|västar|\bväst\b/],
 
   // Bottoms
@@ -135,6 +151,7 @@ const RULES = [
   // "short" alone is a UVU product name ("SPLIT SHORT"), but not "short sleeve".
   ['bottoms/shorts', /\bshorts\b|\bshort\b(?![\s-]*(sleeve|ärm))/],
   ['bottoms/skirts', /\b(skirts?|skorts?)\b|kjol/],
+  ['bottoms/underwear', /\b(boxers?|briefs?|underwear|hipsters?|thongs?)\b|kalsonger|trosor/],
   ['bottoms/pants', /\b(pants?|trousers?|joggers?|sweatpants?|jeans|chinos?|cargos?)\b|byxor|byxa/, { weight: 1.5 }],
 
   // Mid layers
