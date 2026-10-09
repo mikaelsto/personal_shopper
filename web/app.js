@@ -3,7 +3,7 @@
 
 import { TAXONOMY, label } from './lib/taxonomy.mjs';
 import { fromShopify, isGiftCard, shopifyPageUrl } from './lib/shopify-map.mjs';
-import { PALETTES, paletteById } from './lib/palettes.mjs';
+import { PALETTES, FAMILIES, paletteById } from './lib/palettes.mjs';
 import {
   loadSelection, saveSelection, selectionParams, isActive, targetColors, attachSwatches,
   matchingColorways, matchInfo, loadColorOverrides, colorName,
@@ -135,14 +135,17 @@ function bind() {
   });
   $('#f-features').addEventListener('click', (e) => toggleChip(e, 'feature', state.features));
   $('#f-palette').addEventListener('click', (e) => {
-    const rm = e.target.closest('[data-unpalette], [data-uncolor]');
-    if (rm?.dataset.unpalette) setPalette({ palettes: palette.palettes.filter((id) => id !== rm.dataset.unpalette) });
+    const tile = e.target.closest('[data-season]');
+    const rm = e.target.closest('[data-uncolor]');
+    if (tile) {
+      const id = tile.dataset.season;
+      setPalette({ palettes: palette.palettes.includes(id) ? palette.palettes.filter((x) => x !== id) : [...palette.palettes, id] });
+    }
     else if (rm?.dataset.uncolor) setPalette({ colors: palette.colors.filter((h) => h !== rm.dataset.uncolor) });
     else if (e.target.closest('#pal-clear-all')) setPalette({ palettes: [], colors: [] });
     else if (e.target.closest('#pal-send')) sendFeedback();
   });
   $('#f-palette').addEventListener('change', (e) => {
-    if (e.target.id === 'pal-add' && e.target.value) setPalette({ palettes: [...palette.palettes, e.target.value] });
     if (e.target.id === 'pal-neutrals') setPalette({ neutrals: e.target.checked });
     if (e.target.id === 'pal-match') setPalette({ match: e.target.value });
   });
@@ -158,12 +161,6 @@ function bind() {
   on('#sort', 'sort');
   $('#more').addEventListener('click', () => { shown += PAGE; render(); });
   $('#reset').addEventListener('click', reset);
-  $('#preset-cold').addEventListener('click', () => {
-    reset(false);
-    Object.assign(state, { category: 'tops+midlayers', cold: true, stock: true });
-    syncControls();
-    apply();
-  });
   $('#toggle-filters').addEventListener('click', () => $('#filters').classList.toggle('open'));
 
   $('#grid').addEventListener('click', (e) => {
@@ -267,27 +264,28 @@ function renderPaletteFilter() {
   const q = selectionParams(palette);
   const pickerUrl = `palettes.html${q.size ? `?${q}` : ''}`;
   $('#nav-palette').href = pickerUrl;
-  const strip = (p) => `<span class="mini-strip">${p.colors.map((c) => `<i style="background:${esc(c.hex)}"></i>`).join('')}</span>`;
-  const available = PALETTES.filter((p) => !palette.palettes.includes(p.id));
+  $('#pal-advanced').href = pickerUrl;
+  // Season grid: one row per family, click a tile to toggle that season.
+  const tile = (p) => `<button class="pal-tile" data-season="${esc(p.id)}" aria-pressed="${palette.palettes.includes(p.id)}" title="${esc(p.label)} – ${esc(p.blurb)}">
+      <span class="pal-tile-strip">${p.colors.map((c) => `<i style="background:${esc(c.hex)}"></i>`).join('')}</span>
+      <span class="pal-tile-name">${esc(p.label.split(' ')[0])}</span>
+    </button>`;
   $('#f-palette').innerHTML = `
-    ${isActive(palette) ? `<div class="chips">
-      ${palette.palettes.map((id) => `<button class="chip on" data-unpalette="${esc(id)}" title="Remove">${strip(paletteById[id])}${esc(paletteById[id].label)} <span class="x">×</span></button>`).join('')}
+    ${isActive(palette) ? '' : '<p class="muted pal-empty">Pick your season to see only products in your colours.</p>'}
+    ${FAMILIES.map((f) => `<div class="pal-fam">
+      <span class="pal-fam-name">${esc(f.label)}</span>
+      <div class="pal-tiles">${PALETTES.filter((p) => p.family === f.id).map(tile).join('')}</div>
+    </div>`).join('')}
+    ${palette.colors.length ? `<div class="chips">
       ${palette.colors.map((h) => `<button class="chip on" data-uncolor="${esc(h)}" title="Remove"><i class="dot" style="background:${esc(h)}"></i>${esc(colorName(h))} <span class="x">×</span></button>`).join('')}
-    </div>` : '<p class="muted pal-empty">Show only products in your colours.</p>'}
-    <select id="pal-add">
-      <option value="">${isActive(palette) ? '+ Add a season…' : 'Choose a season…'}</option>
-      ${available.map((p) => `<option value="${esc(p.id)}">${esc(p.label)}</option>`).join('')}
-    </select>
+    </div>` : ''}
     ${isActive(palette) ? `
       <label class="check"><input type="checkbox" id="pal-neutrals" ${palette.neutrals ? 'checked' : ''}> Include neutrals</label>
       <label class="check">Match <select id="pal-match" class="inline">
         <option value="close" ${palette.match === 'close' ? 'selected' : ''}>close</option>
         <option value="broad" ${palette.match === 'broad' ? 'selected' : ''}>broad</option>
-      </select></label>` : ''}
-    <div class="pal-links">
-      <a href="${esc(pickerUrl)}">${isActive(palette) ? 'Edit on palette page' : 'Browse palettes & colours'} →</a>
-      ${isActive(palette) ? '<button id="pal-clear-all" class="link">Clear</button>' : ''}
-    </div>
+      </select></label>
+      <div class="pal-links"><button id="pal-clear-all" class="link">Clear palette</button></div>` : ''}
     ${feedbackHtml()}`;
 }
 
