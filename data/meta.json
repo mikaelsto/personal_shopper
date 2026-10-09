@@ -3,20 +3,20 @@
     "satisfy": {
       "ok": true,
       "count": 714,
-      "updatedAt": "2026-10-09T13:59:09.375Z"
+      "updatedAt": "2026-10-09T14:08:46.856Z"
     },
     "uvu": {
       "ok": true,
       "count": 104,
-      "updatedAt": "2026-10-09T13:59:10.930Z"
+      "updatedAt": "2026-10-09T14:08:48.672Z"
     },
     "kayo": {
       "ok": true,
       "count": 2204,
-      "updatedAt": "2026-10-09T13:59:23.782Z"
+      "updatedAt": "2026-10-09T14:09:02.238Z"
     }
   },
-  "lastRun": "2026-10-09T14:00:02.468Z",
+  "lastRun": "2026-10-09T14:10:58.363Z",
   "total": 3022,
   "unmapped": {
     "kayo: Objekt": 4
