@@ -8,9 +8,8 @@
 
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
-import { STORES } from './stores.mjs';
-import { fetchShopify } from './adapters/shopify.mjs';
-import { fetchImport } from './adapters/importfile.mjs';
+import { fetchStore } from './adapters/index.mjs';
+import { aiClassify, applyAiCategories } from './lib/ai-classify.mjs';
 
 const DATA = fileURLToPath(new URL('../data', import.meta.url));
 const today = new Date().toISOString().slice(0, 10);
@@ -23,6 +22,7 @@ const readJson = async (file, fallback) => {
   }
 };
 
+const STORES = await readJson('stores.json', []);
 const selected = (process.argv[2] || process.env.STORES || '')
   .split(',').map((s) => s.trim()).filter(Boolean);
 const stores = selected.length ? STORES.filter((s) => selected.includes(s.id)) : STORES;
@@ -36,10 +36,7 @@ const fresh = new Map(); // storeId -> products[]
 for (const store of stores) {
   const started = Date.now();
   try {
-    const products =
-      store.platform === 'shopify' ? await fetchShopify(store)
-      : store.platform === 'import' ? await fetchImport(store, DATA)
-      : null;
+    const products = await fetchStore(store, DATA);
     if (products === null) {
       console.log(`- ${store.name}: no data source yet, skipped`);
       continue;
@@ -54,7 +51,9 @@ for (const store of stores) {
 }
 
 // Merge: refreshed stores replace their products; others are kept as-is.
-const merged = previous.products.filter((p) => !fresh.has(p.store));
+// Products from stores no longer in stores.json are dropped.
+const registered = new Set(STORES.map((s) => s.id));
+const merged = previous.products.filter((p) => !fresh.has(p.store) && registered.has(p.store));
 for (const products of fresh.values()) {
   for (const p of products) {
     const old = prevById.get(p.id);
@@ -69,13 +68,31 @@ for (const products of fresh.values()) {
 }
 merged.sort((a, b) => a.store.localeCompare(b.store) || a.title.localeCompare(b.title));
 
+// Taxonomy: products the rules could only guess at are classified by Claude (cached).
+const aiCache = await readJson('ai-categories.json', {});
+await aiClassify(merged, aiCache);
+applyAiCategories(merged, aiCache);
+
+// Store categories that still end up as "other" — candidates for new taxonomy rules.
+meta.unmapped = Object.fromEntries(
+  Object.entries(
+    merged.filter((p) => p.subcategory === 'other').reduce((acc, p) => {
+      const k = `${p.store}: ${p.productType || '(none)'}`;
+      acc[k] = (acc[k] ?? 0) + 1;
+      return acc;
+    }, {}),
+  ).sort((a, b) => b[1] - a[1]),
+);
+
+for (const id of Object.keys(meta.stores)) if (!registered.has(id)) delete meta.stores[id];
 meta.lastRun = new Date().toISOString();
 meta.total = merged.length;
 
 await mkdir(DATA, { recursive: true });
 await writeFile(`${DATA}/products.json`, JSON.stringify({ generatedAt: meta.lastRun, products: merged }));
 await writeFile(`${DATA}/price-history.json`, JSON.stringify(history));
+await writeFile(`${DATA}/ai-categories.json`, JSON.stringify(aiCache, null, 1) + '\n');
 await writeFile(`${DATA}/meta.json`, JSON.stringify(meta, null, 2) + '\n');
 console.log(`Wrote ${merged.length} products.`);
 
-if ([...stores].every((s) => meta.stores[s.id]?.ok === false)) process.exit(1);
+if (stores.length && stores.every((s) => meta.stores[s.id]?.ok === false)) process.exit(1);

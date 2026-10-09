@@ -31,15 +31,21 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
+          cache: npm
+      - run: npm ci
       - name: Fetch products
         env:
           STORES: ${{ inputs.stores }}
+          # Optional: lets Claude classify products the taxonomy rules can only guess at.
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: node scripts/update.mjs
+      - name: Update taxonomy report
+        run: node scripts/taxonomy-doc.mjs
       - name: Commit data
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data
+          git add data TAXONOMY.md
           if git diff --cached --quiet; then
             echo "No changes"
           else

@@ -1,0 +1,33 @@
+[
+  {
+    "id": "satisfy",
+    "name": "Satisfy",
+    "origin": "https://satisfyrunning.com",
+    "platform": "shopify",
+    "base": "https://satisfyrunning.com",
+    "country": "SE",
+    "addedAt": "2026-10-09"
+  },
+  {
+    "id": "uvu",
+    "name": "UVU",
+    "origin": "https://uvuclub.com",
+    "platform": "shopify",
+    "base": "https://uvuclub.com",
+    "country": "SE",
+    "addedAt": "2026-10-09"
+  },
+  {
+    "id": "kayo",
+    "name": "KA-YO",
+    "origin": "https://www.ka-yo.com",
+    "platform": "geins",
+    "base": "https://www.ka-yo.com/se",
+    "apiKey": "484FFAFD-6A61-4118-93D6-495A9E84603E",
+    "channelId": "1|com",
+    "market": "se",
+    "language": "sv-SE",
+    "imageBase": "https://images.ka-yo.com",
+    "addedAt": "2026-10-09"
+  }
+]

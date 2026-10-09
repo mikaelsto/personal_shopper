@@ -2,15 +2,23 @@
   "stores": {
     "satisfy": {
       "ok": true,
-      "count": 714,
-      "updatedAt": "2026-10-09T12:39:39.945Z"
+      "count": 713,
+      "updatedAt": "2026-10-09T13:16:22.800Z"
     },
     "uvu": {
       "ok": true,
       "count": 104,
-      "updatedAt": "2026-10-09T12:39:41.445Z"
+      "updatedAt": "2026-10-09T13:16:24.207Z"
+    },
+    "kayo": {
+      "ok": true,
+      "count": 2205,
+      "updatedAt": "2026-10-09T13:16:35.181Z"
     }
   },
-  "lastRun": "2026-10-09T12:39:41.467Z",
-  "total": 818
+  "lastRun": "2026-10-09T13:16:35.192Z",
+  "total": 3022,
+  "unmapped": {
+    "satisfy: (none)": 36
+  }
 }

@@ -1,14 +1,15 @@
-// Personal Shopper front-end. Reads data/products.json (built by the GitHub job).
+// Personal Shopper front-end. Reads data/products.json + data/stores.json (built by the GitHub job).
+// Newly added Shopify stores are also fetched live in the browser until the job has added them.
 
+import { TAXONOMY, label } from './lib/taxonomy.mjs';
+import { fromShopify, isGiftCard, shopifyPageUrl } from './lib/shopify-map.mjs';
+
+const REPO = 'mikaelsto/personal_shopper';
 const PAGE = 60;
 const COLD_FEATURES = ['long-sleeve', 'warm', 'merino/wool'];
-const TOPS = ['t-shirt', 'long-sleeve', 'singlet', 'midlayer'];
-const CATEGORY_LABELS = {
-  tops: 'All running tops',
-  't-shirt': 'T-shirts', 'long-sleeve': 'Long sleeve', singlet: 'Singlets / vests', midlayer: 'Mid layers / hoodies',
-  jacket: 'Jackets', tights: 'Tights', pants: 'Pants', shorts: 'Shorts', shoes: 'Shoes', socks: 'Socks',
-  headwear: 'Caps / hats', gloves: 'Gloves', bra: 'Sports bras', accessories: 'Accessories', other: 'Other',
-};
+const COLD_SUBS = ['tops/long-sleeve', 'tops/base-layers'];
+const HIDDEN_DEPTS = TAXONOMY.filter((d) => d.hidden).map((d) => d.id);
+const catLabel = (p) => (p.subcategory && p.subcategory !== 'other' ? `${label(p.category)} › ${label(p.subcategory)}` : 'Other');
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -18,9 +19,13 @@ const store = {
   set: (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
 };
 
-// Shopify CDN can resize on the fly; other hosts get the original image.
-const thumb = (url, w = 500) =>
-  url && url.includes('cdn.shopify.com') ? `${url}${url.includes('?') ? '&' : '?'}width=${w}` : url;
+// Use smaller image variants where the store's image server offers them.
+const thumb = (url, w = 500) => {
+  if (!url) return url;
+  if (url.includes('cdn.shopify.com')) return `${url}${url.includes('?') ? '&' : '?'}width=${w}`;
+  if (url.includes('images.ka-yo.com/product/1000f1239/') && w <= 500) return url.replace('/1000f1239/', '/300f371/');
+  return url;
+};
 
 // Normalise size labels like "Size 1 (S)" or "Medium" to S/M/L…
 function sizeLetter(s) {
@@ -35,6 +40,8 @@ function sizeLetter(s) {
 const shortSize = (s) => sizeLetter(s) ?? (String(s).match(/EU\s*([\d½⅓⅔.,]+)/)?.[0].replace(/\s+/, ' ')) ?? s;
 
 let all = [];
+let stores = []; // registered stores (data/stores.json) + pending ones added in this browser
+const liveStatus = new Map(); // storeId -> "loading 250…" | "error" while fetching in the browser
 let filtered = [];
 let shown = PAGE;
 let history = null;
@@ -47,34 +54,69 @@ const state = {
 
 init();
 
+const withText = (p) => ({ ...p, _text: `${p.title} ${p.brand} ${p.storeName} ${label(p.category)} ${label(p.subcategory)} ${p.productType ?? ''} ${p.features.join(' ')} ${p.colors.join(' ')} ${p.description}`.toLowerCase() });
+
 async function init() {
-  const res = await fetch('data/products.json');
-  const data = await res.json();
-  all = data.products.map((p) => ({ ...p, _text: `${p.title} ${p.brand} ${p.storeName} ${p.category} ${p.features.join(' ')} ${p.colors.join(' ')} ${p.description}`.toLowerCase() }));
-  $('#meta').textContent = `${all.length} products · updated ${new Date(data.generatedAt).toLocaleDateString('sv-SE')}`;
+  const [data, registered] = await Promise.all([
+    fetch('data/products.json').then((r) => r.json()),
+    fetch('data/stores.json').then((r) => r.json()).catch(() => []),
+  ]);
+  all = data.products.map(withText);
+  $('#meta').textContent = `updated ${new Date(data.generatedAt).toLocaleDateString('sv-SE')}`;
+
+  // Pending stores live in this browser until the GitHub job has added them to stores.json.
+  const hosts = new Set(registered.map((s) => new URL(s.base).hostname));
+  const pending = store.get('pendingStores', []).filter((s) => !hosts.has(new URL(s.base).hostname));
+  store.set('pendingStores', pending);
+  stores = [...registered, ...pending.map((s) => ({ ...s, pending: true }))];
+
   buildFilters();
   bind();
   apply();
+  for (const s of pending) if (s.platform === 'shopify') loadLive(s);
+}
+
+function renderStoreChips() {
+  const counts = all.reduce((a, p) => ((a[p.store] = (a[p.store] ?? 0) + 1), a), {});
+  $('#f-stores').innerHTML = stores.map((s) => {
+    const status = liveStatus.get(s.id);
+    const note = status ?? (s.pending ? (counts[s.id] ? `${counts[s.id]} · not saved` : 'not saved') : counts[s.id] ?? 0);
+    return `<button class="chip ${s.pending ? 'pending' : ''}" data-store="${esc(s.id)}" aria-pressed="${state.stores.has(s.id)}" title="${esc(s.base)}">${esc(s.name)} <span class="n">${esc(note)}</span>${s.pending ? `<span class="x" data-remove="${esc(s.id)}" title="Remove">×</span>` : ''}</button>`;
+  }).join('') + `<button class="chip add" id="add-store-btn" title="Add a store" aria-label="Add a store">+</button>`;
 }
 
 function buildFilters() {
-  const stores = [...new Map(all.map((p) => [p.store, p.storeName])).entries()];
-  $('#f-stores').innerHTML = stores.map(([id, name]) => `<button class="chip" data-store="${id}" aria-pressed="false">${esc(name)}</button>`).join('');
-
-  const counts = all.reduce((a, p) => ((a[p.category] = (a[p.category] ?? 0) + 1), a), {});
-  const cats = Object.keys(CATEGORY_LABELS).filter((c) => c === 'tops' || counts[c]);
-  $('#f-category').innerHTML = `<option value="">All categories</option>` +
-    cats.map((c) => `<option value="${c}">${CATEGORY_LABELS[c]}${counts[c] ? ` (${counts[c]})` : ''}</option>`).join('');
+  renderStoreChips();
+  const counts = all.reduce((a, p) => {
+    a[p.category] = (a[p.category] ?? 0) + 1;
+    a[p.subcategory] = (a[p.subcategory] ?? 0) + 1;
+    return a;
+  }, {});
+  const opt = (value, text, n) => `<option value="${value}">${esc(text)}${n ? ` (${n})` : ''}</option>`;
+  $('#f-category').innerHTML =
+    opt('', 'All categories') +
+    opt('tops+midlayers', 'Tops & mid layers') +
+    TAXONOMY.map((d) => `<optgroup label="${esc(d.label)}${d.hidden ? ' (hidden by default)' : ''}">` +
+      opt(d.id, `All ${d.label.toLowerCase()}`, counts[d.id]) +
+      d.subs.filter((s) => counts[s.id]).map((s) => opt(s.id, s.label, counts[s.id])).join('') +
+      '</optgroup>').join('') +
+    (counts.other ? opt('other', 'Other / uncategorised', counts.other) : '');
 
   const feats = [...new Set(all.flatMap((p) => p.features))].sort();
-  $('#f-features').innerHTML = feats.map((f) => `<button class="chip" data-feature="${esc(f)}" aria-pressed="false">${esc(f)}</button>`).join('');
+  $('#f-features').innerHTML = feats.map((f) => `<button class="chip" data-feature="${esc(f)}" aria-pressed="${state.features.has(f)}">${esc(f)}</button>`).join('');
   $('#f-size').value = state.size;
+  $('#f-category').value = state.category;
 }
 
 function bind() {
   let t;
   $('#q').addEventListener('input', (e) => { clearTimeout(t); t = setTimeout(() => { state.q = e.target.value.trim().toLowerCase(); apply(); }, 150); });
-  $('#f-stores').addEventListener('click', (e) => toggleChip(e, 'store', state.stores));
+  $('#f-stores').addEventListener('click', (e) => {
+    if (e.target.closest('#add-store-btn')) return openAddStore();
+    const remove = e.target.closest('[data-remove]');
+    if (remove) return removePending(remove.dataset.remove);
+    toggleChip(e, 'store', state.stores);
+  });
   $('#f-features').addEventListener('click', (e) => toggleChip(e, 'feature', state.features));
   const on = (id, key, prop = 'value', after) => $(id).addEventListener('change', (e) => { state[key] = e.target[prop]; after?.(); apply(); });
   on('#f-category', 'category');
@@ -90,7 +132,7 @@ function bind() {
   $('#reset').addEventListener('click', reset);
   $('#preset-cold').addEventListener('click', () => {
     reset(false);
-    Object.assign(state, { category: 'tops', cold: true, stock: true });
+    Object.assign(state, { category: 'tops+midlayers', cold: true, stock: true });
     syncControls();
     apply();
   });
@@ -109,7 +151,7 @@ function bind() {
   });
   $('#compare-open').addEventListener('click', openCompare);
   $('#compare-clear').addEventListener('click', () => { compare.clear(); saveCompare(); render(); });
-  for (const d of ['#detail', '#compare']) {
+  for (const d of ['#detail', '#compare', '#add-store']) {
     $(d).addEventListener('click', (e) => { if (e.target === e.currentTarget || e.target.closest('.close')) e.currentTarget.close(); });
   }
 }
@@ -144,7 +186,10 @@ function syncControls() {
   document.querySelectorAll('[data-feature]').forEach((b) => b.setAttribute('aria-pressed', state.features.has(b.dataset.feature)));
 }
 
-const isCold = (p) => ['long-sleeve', 'midlayer'].includes(p.category) || p.features.some((f) => COLD_FEATURES.includes(f));
+const isCold = (p) => COLD_SUBS.includes(p.subcategory) || p.category === 'midlayers' || p.features.some((f) => COLD_FEATURES.includes(f));
+// Category filter value: "" (all except hidden departments), a department, a subcategory, or "a+b".
+const inCategory = (p, value) =>
+  value ? value.split('+').some((v) => p.category === v || p.subcategory === v) : !HIDDEN_DEPTS.includes(p.category);
 const hasSize = (p, size) => p.variants.some((v) => v.available && sizeLetter(v.size) === size);
 
 function apply() {
@@ -153,7 +198,7 @@ function apply() {
   const max = Number(state.max) || Infinity;
   filtered = all.filter((p) =>
     (!state.stores.size || state.stores.has(p.store)) &&
-    (!state.category || (state.category === 'tops' ? TOPS.includes(p.category) : p.category === state.category)) &&
+    inCategory(p, state.category) &&
     [...state.features].every((f) => p.features.includes(f)) &&
     (!state.cold || isCold(p)) &&
     (!state.gender || p.gender === state.gender || p.gender === 'unisex') &&
@@ -196,7 +241,7 @@ function render() {
       <div class="body">
         <span class="store">${esc(p.storeName)} · ${esc(p.brand)}</span>
         <span class="title">${esc(displayTitle(p))}</span>
-        <span class="sub">${esc(CATEGORY_LABELS[p.category] ?? p.category)}${p.features.length ? ` · ${esc(p.features.join(', '))}` : ''}</span>
+        <span class="sub">${esc(catLabel(p))}${p.features.length ? ` · ${esc(p.features.join(', '))}` : ''}</span>
         ${priceHtml(p)}
         <span class="sub">${p.available ? `Sizes: ${esc([...new Set(p.sizesInStock.map(shortSize))].join(' ') || 'one size')}` : 'Sold out'}</span>
       </div>
@@ -227,7 +272,7 @@ function openCompare() {
       ${row('', (p) => `<img src="${esc(thumb(p.images[0], 400))}" alt="">`)}
       ${row('Product', (p) => `<strong>${esc(displayTitle(p))}</strong><br><span class="muted">${esc(p.brand)} @ ${esc(p.storeName)}</span>`)}
       ${row('Price', priceHtml)}
-      ${row('Category', (p) => esc(CATEGORY_LABELS[p.category] ?? p.category))}
+      ${row('Category', (p) => esc(catLabel(p)))}
       ${row('Features', (p) => p.features.map((f) => `<span class="tag">${esc(f)}</span>`).join('') || '–')}
       ${row('Material', (p) => esc(p.materials.join(', ')) || '–')}
       ${row('Sizes in stock', (p) => esc([...new Set(p.sizesInStock.map(shortSize))].join(' ')) || 'Sold out')}
@@ -258,7 +303,7 @@ async function openDetail(id) {
       <div class="info">
         <div class="muted">${esc(p.brand)} · sold by <strong>${esc(p.storeName)}</strong></div>
         ${priceHtml(p)}
-        <div>${p.features.map((f) => `<span class="tag">${esc(f)}</span>`).join('')}<span class="tag">${esc(CATEGORY_LABELS[p.category] ?? p.category)}</span>${p.gender !== 'unisex' ? `<span class="tag">${p.gender}</span>` : ''}</div>
+        <div>${p.features.map((f) => `<span class="tag">${esc(f)}</span>`).join('')}<span class="tag">${esc(catLabel(p))}</span>${p.gender !== 'unisex' ? `<span class="tag">${p.gender}</span>` : ''}</div>
         ${p.colors.length ? `<h3>Colour</h3><div>${esc(p.colors.join(', '))}</div>` : ''}
         <h3>Size</h3>
         <div class="sizes">${p.variants.map((v) => `<button class="size" data-variant="${esc(v.id)}" ${v.available ? '' : 'disabled'} aria-pressed="false">${esc(v.size ?? 'One size')}${p.colors.length > 1 && v.color ? ` · ${esc(v.color)}` : ''}</button>`).join('')}</div>
@@ -318,4 +363,105 @@ function renderHistory(h) {
   const pts = h.map(([, v], i) => `${(i / (h.length - 1)) * 300},${55 - ((v - lo) / (hi - lo || 1)) * 50}`).join(' ');
   el.innerHTML = `<svg viewBox="0 0 300 60" preserveAspectRatio="none"><polyline fill="none" stroke="var(--accent)" stroke-width="2" points="${pts}"/></svg>
     ${h.map(([d, v]) => `${d}: ${sek(v)}`).join(' → ')}`;
+}
+
+// ---------- Add store ----------
+// 1. Shopify stores can be read straight from the browser (their feed allows it), so products
+//    show up right away. 2. To keep the store, a pre-filled GitHub issue is opened; the
+//    "Add store" workflow detects the platform, adds it to stores.json and redeploys.
+function openAddStore() {
+  const d = $('#add-store');
+  d.innerHTML = `
+    <div class="dlg-head"><h2>Add a store</h2><button class="close" aria-label="Close">×</button></div>
+    <form class="add-form" method="dialog">
+      <label>Store URL <input name="url" type="text" inputmode="url" required placeholder="https://www.example.com/se/" autocomplete="off"></label>
+      <label>Name (optional) <input name="name" placeholder="e.g. Runners Lab" autocomplete="off"></label>
+      <div class="actions"><button class="btn" type="submit">Add store</button></div>
+      <div id="add-result" class="add-result"></div>
+    </form>`;
+  d.querySelector('form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const f = new FormData(e.target);
+    await addStore(String(f.get('url')).trim(), String(f.get('name') ?? '').trim());
+  });
+  d.showModal();
+  d.querySelector('input[name=url]').focus();
+}
+
+async function addStore(rawUrl, name) {
+  const out = $('#add-result');
+  let url;
+  try {
+    url = new URL(/^https?:\/\//.test(rawUrl) ? rawUrl : `https://${rawUrl}`);
+  } catch {
+    out.innerHTML = '<p class="warn">That doesn\'t look like a web address.</p>';
+    return;
+  }
+  const existing = stores.find((s) => new URL(s.base).hostname === url.hostname);
+  if (existing) {
+    out.innerHTML = `<p><strong>${esc(existing.name)}</strong> is already in your list.</p>`;
+    return;
+  }
+
+  out.innerHTML = '<p class="muted">Checking the store…</p>';
+  const id = url.hostname.replace(/^www\./, '').split('.')[0].replace(/[^a-z0-9]/gi, '').toLowerCase();
+  const displayName = name || url.hostname.replace(/^www\./, '').split('.')[0].replace(/^./, (c) => c.toUpperCase());
+  const isShopify = await fetch(`${url.origin}/products.json?limit=1`)
+    .then((r) => (r.ok ? r.json() : null))
+    .then((j) => Array.isArray(j?.products))
+    .catch(() => false);
+
+  const pending = {
+    id, name: displayName, base: isShopify ? url.origin : url.href.replace(/\/+$/, ''),
+    origin: url.origin, platform: isShopify ? 'shopify' : 'unknown', country: 'SE', addedAt: new Date().toISOString().slice(0, 10),
+  };
+  store.set('pendingStores', [...store.get('pendingStores', []), pending]);
+  stores.push({ ...pending, pending: true });
+  renderStoreChips();
+  if (isShopify) loadLive(pending);
+
+  const issue = `https://github.com/${REPO}/issues/new?` + new URLSearchParams({
+    title: `Add store: ${url.href}`,
+    body: `name: ${displayName}\n\nOpened from Personal Shopper. The "Add store" workflow detects how to read this store, adds it to data/stores.json and refreshes the site.`,
+  });
+  out.innerHTML = `
+    ${isShopify
+      ? `<p>✅ <strong>${esc(displayName)}</strong> is a Shopify store: its products are loading in the background now.</p>`
+      : `<p>ℹ️ <strong>${esc(displayName)}</strong> can't be read directly from the browser. The GitHub job will work out how to fetch it (store API, sitemap, or a Claude in Chrome import).</p>`}
+    <p><strong>Save it permanently:</strong> submit the GitHub issue that opens. The daily job will then include this store.</p>
+    <a class="btn" href="${esc(issue)}" target="_blank" rel="noopener">Open GitHub issue ↗</a>`;
+}
+
+// Removes a store added in this browser (it stays in stores.json if the GitHub issue was submitted).
+function removePending(id) {
+  store.set('pendingStores', store.get('pendingStores', []).filter((s) => s.id !== id));
+  stores = stores.filter((s) => !(s.pending && s.id === id));
+  state.stores.delete(id);
+  liveStatus.delete(id);
+  all = all.filter((p) => p.store !== id);
+  buildFilters();
+  apply();
+}
+
+// Fetches a Shopify store's products in the browser and merges them into the list.
+async function loadLive(s) {
+  const fetched = [];
+  try {
+    for (let page = 1; page <= 40; page++) {
+      liveStatus.set(s.id, `loading ${fetched.length}…`);
+      renderStoreChips();
+      const res = await fetch(shopifyPageUrl(s, page));
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const { products } = await res.json();
+      if (!products?.length) break;
+      fetched.push(...products.filter((p) => !isGiftCard(p)).map((p) => withText({ ...fromShopify(s, p), live: true })));
+    }
+    liveStatus.delete(s.id);
+  } catch (err) {
+    console.warn(`Live fetch failed for ${s.name}:`, err);
+    liveStatus.set(s.id, 'error');
+  }
+  all = all.filter((p) => p.store !== s.id).concat(fetched);
+  buildFilters();
+  apply();
 }

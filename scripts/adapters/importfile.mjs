@@ -7,7 +7,7 @@
 // variants[]: { id?, size, color?, available, price, compareAt? }
 
 import { readFile } from 'node:fs/promises';
-import { normalizeProduct } from '../normalize.mjs';
+import { normalizeProduct } from '../lib/normalize.mjs';
 
 export async function fetchImport(store, dataDir) {
   let file;

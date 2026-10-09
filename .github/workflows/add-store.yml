@@ -1,0 +1,60 @@
+name: Add store
+
+# Triggered by the "+" button on the site, which opens a pre-filled issue titled
+# "Add store: <url>". Only issues opened by the repo owner are processed.
+on:
+  issues:
+    types: [opened]
+
+permissions:
+  contents: write
+  issues: write
+  actions: write
+
+concurrency:
+  group: update-and-deploy
+  cancel-in-progress: false
+
+jobs:
+  add:
+    if: startsWith(github.event.issue.title, 'Add store') && github.event.issue.user.login == github.repository_owner
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Detect store and add to stores.json
+        id: add
+        env:
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+          ISSUE_BODY: ${{ github.event.issue.body }}
+          SUMMARY_FILE: ${{ runner.temp }}/summary.md
+        run: node scripts/add-store.mjs
+      - name: Commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/stores.json
+          if ! git diff --cached --quiet; then
+            git commit -m "Add store from #${{ github.event.issue.number }}"
+            git push
+          fi
+      - name: Fetch products and redeploy
+        if: steps.add.outputs.store_id != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          STORE_ID: ${{ steps.add.outputs.store_id }}
+        run: |
+          gh workflow run update.yml -f stores="$STORE_ID"
+          printf '\n\nFetching products now; the site updates in a few minutes ([Actions](%s/actions)).\n' "${{ github.server_url }}/${{ github.repository }}" >> "${{ runner.temp }}/summary.md"
+      - name: Reply and close issue
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          [ -f "${{ runner.temp }}/summary.md" ] || echo "❌ Something went wrong; see the workflow log." > "${{ runner.temp }}/summary.md"
+          gh issue comment ${{ github.event.issue.number }} --body-file "${{ runner.temp }}/summary.md"
+          gh issue close ${{ github.event.issue.number }}
