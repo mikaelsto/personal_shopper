@@ -1,6 +1,6 @@
 // Palette picker: choose seasons and/or single colours, then open the shop filtered to them.
 
-import { FAMILIES, PALETTES, BASIC_COLORS, SOURCES, allColors } from './lib/palettes.mjs';
+import { FAMILIES, PALETTES, BASIC_COLORS, allColors } from './lib/palettes.mjs';
 import { hexToRgb } from './lib/colors.mjs';
 import { TAXONOMY } from './lib/taxonomy.mjs';
 import {
@@ -152,7 +152,6 @@ function update() {
   $('#pal-go').textContent = active ? (counts ? `Show ${n(total(counts))} products →` : 'Show products →') : 'Show all products';
 }
 
-$('#sources').innerHTML = SOURCES.map((x) => `<a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.name)}</a>`).join(' and ');
 $('#opt-neutrals').checked = sel.neutrals;
 $('#opt-match').value = sel.match;
 $('#opt-exclude').innerHTML = EXCLUDABLE.map((x) =>
