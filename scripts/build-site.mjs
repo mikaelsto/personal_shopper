@@ -1,15 +1,15 @@
 // Assembles the static site into _site/ for GitHub Pages:
 //   web/*                   -> _site/
 //   data/*.json (public)    -> _site/data/
-//   scripts/lib (browser)   -> _site/lib/   (shared taxonomy + Shopify mapping)
+//   scripts/lib (browser)   -> _site/lib/   (shared taxonomy, Shopify mapping, colours/palettes)
 import { cp, rm, mkdir } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
 const out = `${root}_site`;
 
-export const DATA_FILES = ['products.json', 'price-history.json', 'meta.json', 'stores.json'];
-export const BROWSER_LIBS = ['normalize.mjs', 'taxonomy.mjs', 'shopify-map.mjs'];
+export const DATA_FILES = ['products.json', 'price-history.json', 'meta.json', 'stores.json', 'color-names.json'];
+export const BROWSER_LIBS = ['normalize.mjs', 'taxonomy.mjs', 'shopify-map.mjs', 'colors.mjs', 'palettes.mjs'];
 
 await rm(out, { recursive: true, force: true });
 await mkdir(`${out}/data`, { recursive: true });

@@ -10,6 +10,7 @@ import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { fetchStore } from './adapters/index.mjs';
 import { aiClassify, applyAiCategories } from './lib/ai-classify.mjs';
+import { aiResolveColors } from './lib/ai-colors.mjs';
 
 const DATA = fileURLToPath(new URL('../data', import.meta.url));
 const today = new Date().toISOString().slice(0, 10);
@@ -73,6 +74,10 @@ const aiCache = await readJson('ai-categories.json', {});
 await aiClassify(merged, aiCache);
 applyAiCategories(merged, aiCache);
 
+// Palette filter: colour names the dictionary can't read are resolved by Claude (cached).
+const colorNames = await readJson('color-names.json', {});
+await aiResolveColors(merged, colorNames);
+
 // Store categories that still end up as "other" — candidates for new taxonomy rules.
 meta.unmapped = Object.fromEntries(
   Object.entries(
@@ -92,6 +97,7 @@ await mkdir(DATA, { recursive: true });
 await writeFile(`${DATA}/products.json`, JSON.stringify({ generatedAt: meta.lastRun, products: merged }));
 await writeFile(`${DATA}/price-history.json`, JSON.stringify(history));
 await writeFile(`${DATA}/ai-categories.json`, JSON.stringify(aiCache, null, 1) + '\n');
+await writeFile(`${DATA}/color-names.json`, JSON.stringify(colorNames, null, 1) + '\n');
 await writeFile(`${DATA}/meta.json`, JSON.stringify(meta, null, 2) + '\n');
 console.log(`Wrote ${merged.length} products.`);
 

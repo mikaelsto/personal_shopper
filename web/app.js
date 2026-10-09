@@ -3,6 +3,11 @@
 
 import { TAXONOMY, label } from './lib/taxonomy.mjs';
 import { fromShopify, isGiftCard, shopifyPageUrl } from './lib/shopify-map.mjs';
+import { PALETTES, paletteById } from './lib/palettes.mjs';
+import {
+  loadSelection, saveSelection, selectionParams, isActive, targetColors, attachSwatches,
+  matchingColorways, loadColorOverrides, colorName,
+} from './palette-filter.js';
 
 const REPO = 'mikaelsto/personal_shopper';
 const PAGE = 60;
@@ -46,6 +51,9 @@ let filtered = [];
 let shown = PAGE;
 let history = null;
 const compare = new Set(store.get('compare', []));
+let colorOverrides = {}; // data/color-names.json
+let palette = loadSelection(); // chosen seasons/colours; filters every category
+let targets = targetColors(palette);
 
 const state = {
   q: '', stores: new Set(), category: '', features: new Set(), cold: false,
@@ -57,11 +65,13 @@ init();
 const withText = (p) => ({ ...p, _text: `${p.title} ${p.brand} ${p.storeName} ${label(p.category)} ${label(p.subcategory)} ${p.productType ?? ''} ${p.features.join(' ')} ${p.colors.join(' ')} ${p.description}`.toLowerCase() });
 
 async function init() {
-  const [data, registered] = await Promise.all([
+  const [data, registered, overrides] = await Promise.all([
     fetch('data/products.json').then((r) => r.json()),
     fetch('data/stores.json').then((r) => r.json()).catch(() => []),
+    loadColorOverrides(),
   ]);
-  all = data.products.map(withText);
+  colorOverrides = overrides;
+  all = attachSwatches(data.products.map(withText), colorOverrides);
   $('#meta').textContent = `updated ${new Date(data.generatedAt).toLocaleDateString('sv-SE')}`;
 
   // Pending stores live in this browser until the GitHub job has added them to stores.json.
@@ -87,14 +97,15 @@ function renderStoreChips() {
 
 function buildFilters() {
   renderStoreChips();
-  const counts = all.reduce((a, p) => {
+  renderPaletteFilter();
+  const counts = all.filter(inPalette).reduce((a, p) => {
     a[p.category] = (a[p.category] ?? 0) + 1;
     a[p.subcategory] = (a[p.subcategory] ?? 0) + 1;
     return a;
   }, {});
   const opt = (value, text, n) => `<option value="${value}">${esc(text)}${n ? ` (${n})` : ''}</option>`;
   $('#f-category').innerHTML =
-    opt('', 'All categories') +
+    opt('', isActive(palette) ? 'All categories in your palette' : 'All categories') +
     opt('tops+midlayers', 'Tops & mid layers') +
     TAXONOMY.map((d) => `<optgroup label="${esc(d.label)}${d.hidden ? ' (hidden by default)' : ''}">` +
       opt(d.id, `All ${d.label.toLowerCase()}`, counts[d.id]) +
@@ -118,6 +129,17 @@ function bind() {
     toggleChip(e, 'store', state.stores);
   });
   $('#f-features').addEventListener('click', (e) => toggleChip(e, 'feature', state.features));
+  $('#f-palette').addEventListener('click', (e) => {
+    const rm = e.target.closest('[data-unpalette], [data-uncolor]');
+    if (rm?.dataset.unpalette) setPalette({ palettes: palette.palettes.filter((id) => id !== rm.dataset.unpalette) });
+    else if (rm?.dataset.uncolor) setPalette({ colors: palette.colors.filter((h) => h !== rm.dataset.uncolor) });
+    else if (e.target.closest('#pal-clear-all')) setPalette({ palettes: [], colors: [] });
+  });
+  $('#f-palette').addEventListener('change', (e) => {
+    if (e.target.id === 'pal-add' && e.target.value) setPalette({ palettes: [...palette.palettes, e.target.value] });
+    if (e.target.id === 'pal-neutrals') setPalette({ neutrals: e.target.checked });
+    if (e.target.id === 'pal-match') setPalette({ match: e.target.value });
+  });
   const on = (id, key, prop = 'value', after) => $(id).addEventListener('change', (e) => { state[key] = e.target[prop]; after?.(); apply(); });
   on('#f-category', 'category');
   on('#f-cold', 'cold', 'checked');
@@ -186,6 +208,44 @@ function syncControls() {
   document.querySelectorAll('[data-feature]').forEach((b) => b.setAttribute('aria-pressed', state.features.has(b.dataset.feature)));
 }
 
+// ---------- Palette filter ----------
+const inPalette = (p) => !targets.length || matchingColorways(p, targets, palette.match).length > 0;
+
+function setPalette(change) {
+  palette = { ...palette, ...change };
+  targets = targetColors(palette);
+  saveSelection(palette);
+  buildFilters(); // category counts follow the palette
+  apply();
+}
+
+function renderPaletteFilter() {
+  const q = selectionParams(palette);
+  const pickerUrl = `palettes.html${q.size ? `?${q}` : ''}`;
+  $('#nav-palette').href = pickerUrl;
+  const strip = (p) => `<span class="mini-strip">${p.colors.map((c) => `<i style="background:${esc(c.hex)}"></i>`).join('')}</span>`;
+  const available = PALETTES.filter((p) => !palette.palettes.includes(p.id));
+  $('#f-palette').innerHTML = `
+    ${isActive(palette) ? `<div class="chips">
+      ${palette.palettes.map((id) => `<button class="chip on" data-unpalette="${esc(id)}" title="Remove">${strip(paletteById[id])}${esc(paletteById[id].label)} <span class="x">×</span></button>`).join('')}
+      ${palette.colors.map((h) => `<button class="chip on" data-uncolor="${esc(h)}" title="Remove"><i class="dot" style="background:${esc(h)}"></i>${esc(colorName(h))} <span class="x">×</span></button>`).join('')}
+    </div>` : '<p class="muted pal-empty">Show only products in your colours.</p>'}
+    <select id="pal-add">
+      <option value="">${isActive(palette) ? '+ Add a season…' : 'Choose a season…'}</option>
+      ${available.map((p) => `<option value="${esc(p.id)}">${esc(p.label)}</option>`).join('')}
+    </select>
+    ${isActive(palette) ? `
+      <label class="check"><input type="checkbox" id="pal-neutrals" ${palette.neutrals ? 'checked' : ''}> Include neutrals</label>
+      <label class="check">Match <select id="pal-match" class="inline">
+        <option value="close" ${palette.match === 'close' ? 'selected' : ''}>close</option>
+        <option value="broad" ${palette.match === 'broad' ? 'selected' : ''}>broad</option>
+      </select></label>` : ''}
+    <div class="pal-links">
+      <a href="${esc(pickerUrl)}">${isActive(palette) ? 'Edit on palette page' : 'Browse palettes & colours'} →</a>
+      ${isActive(palette) ? '<button id="pal-clear-all" class="link">Clear</button>' : ''}
+    </div>`;
+}
+
 const isCold = (p) => COLD_SUBS.includes(p.subcategory) || p.category === 'midlayers' || p.features.some((f) => COLD_FEATURES.includes(f));
 // Category filter value: "" (all except hidden departments), a department, a subcategory, or "a+b".
 const inCategory = (p, value) =>
@@ -198,6 +258,7 @@ function apply() {
   const max = Number(state.max) || Infinity;
   filtered = all.filter((p) =>
     (!state.stores.size || state.stores.has(p.store)) &&
+    inPalette(p) &&
     inCategory(p, state.category) &&
     [...state.features].every((f) => p.features.includes(f)) &&
     (!state.cold || isCold(p)) &&
@@ -231,8 +292,17 @@ function priceHtml(p) {
     : `<span class="price">${sek(p.price)}</span>`;
 }
 
+// Colour dots per colourway; colourways in the chosen palette are ringed.
+function swatchesHtml(p) {
+  if (!p._swatches?.length) return '';
+  const hits = new Set(targets.length ? matchingColorways(p, targets, palette.match).map((s) => s.name) : []);
+  const dots = p._swatches.slice(0, 8).map((s) => `<i class="dot ${hits.has(s.name) ? 'hit' : ''}" style="background:${esc(s.hex)}" title="${esc(s.name)}"></i>`).join('');
+  const label = hits.size ? `<span class="hit-label">${esc([...hits].slice(0, 2).join(', '))}</span>` : '';
+  return `<span class="dots">${dots}${p._swatches.length > 8 ? '<span class="muted">+</span>' : ''}${label}</span>`;
+}
+
 function render() {
-  $('#count').textContent = `${filtered.length} products`;
+  $('#count').textContent = `${filtered.length} products${isActive(palette) ? ' in your palette' : ''}`;
   $('#grid').innerHTML = filtered.slice(0, shown).map((p) => `
     <article class="card ${p.available ? '' : 'oos'}" data-id="${esc(p.id)}">
       <div class="img">${p.images[0] ? `<img loading="lazy" src="${esc(thumb(p.images[0]))}" alt="">` : ''}</div>
@@ -243,6 +313,7 @@ function render() {
         <span class="title">${esc(displayTitle(p))}</span>
         <span class="sub">${esc(catLabel(p))}${p.features.length ? ` · ${esc(p.features.join(', '))}` : ''}</span>
         ${priceHtml(p)}
+        ${swatchesHtml(p)}
         <span class="sub">${p.available ? `Sizes: ${esc([...new Set(p.sizesInStock.map(shortSize))].join(' ') || 'one size')}` : 'Sold out'}</span>
       </div>
     </article>`).join('');
@@ -304,7 +375,7 @@ async function openDetail(id) {
         <div class="muted">${esc(p.brand)} · sold by <strong>${esc(p.storeName)}</strong></div>
         ${priceHtml(p)}
         <div>${p.features.map((f) => `<span class="tag">${esc(f)}</span>`).join('')}<span class="tag">${esc(catLabel(p))}</span>${p.gender !== 'unisex' ? `<span class="tag">${p.gender}</span>` : ''}</div>
-        ${p.colors.length ? `<h3>Colour</h3><div>${esc(p.colors.join(', '))}</div>` : ''}
+        ${p.colors.length ? `<h3>Colour</h3><div>${swatchesHtml(p) || esc(p.colors.join(', '))}${p._swatches.length ? `<div class="muted">${esc(p.colors.join(', '))}</div>` : ''}</div>` : ''}
         <h3>Size</h3>
         <div class="sizes">${p.variants.map((v) => `<button class="size" data-variant="${esc(v.id)}" ${v.available ? '' : 'disabled'} aria-pressed="false">${esc(v.size ?? 'One size')}${p.colors.length > 1 && v.color ? ` · ${esc(v.color)}` : ''}</button>`).join('')}</div>
         <div class="actions">
@@ -454,7 +525,7 @@ async function loadLive(s) {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const { products } = await res.json();
       if (!products?.length) break;
-      fetched.push(...products.filter((p) => !isGiftCard(p)).map((p) => withText({ ...fromShopify(s, p), live: true })));
+      fetched.push(...attachSwatches(products.filter((p) => !isGiftCard(p)).map((p) => withText({ ...fromShopify(s, p), live: true })), colorOverrides));
     }
     liveStatus.delete(s.id);
   } catch (err) {

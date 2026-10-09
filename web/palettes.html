@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Shop by Palette</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="palette-page">
+  <header class="top">
+    <div class="brand">
+      <h1><a href="index.html">Personal Shopper</a></h1>
+      <span class="muted">Shop by your colour palette</span>
+    </div>
+    <nav class="nav">
+      <a href="index.html" id="nav-shop">All products</a>
+      <a href="palettes.html" aria-current="page">Shop by palette</a>
+    </nav>
+  </header>
+
+  <main class="pal-main">
+    <section class="pal-intro">
+      <h2>Find clothes in your colours</h2>
+      <p>Pick one or more seasonal palettes, or tap single colours. Then browse the shop as usual: every category only shows products in your colours.</p>
+      <div class="pal-options">
+        <label class="check"><input type="checkbox" id="opt-neutrals" checked> Include each palette's neutrals (black, navy, cream…)</label>
+        <label class="pal-match">Colour match
+          <select id="opt-match">
+            <option value="close">Close</option>
+            <option value="broad">Broad</option>
+          </select>
+        </label>
+      </div>
+    </section>
+
+    <div id="families"></div>
+
+    <section class="pal-basic">
+      <h2>Or pick single colours</h2>
+      <div id="basic" class="swatch-row"></div>
+    </section>
+
+    <p class="note pal-source">Signature colours: <a id="source" target="_blank" rel="noopener">personalcolorai.com</a>. Neutrals are standard colour-analysis guidance. Products are matched on the store's colour name, so a few may be off.</p>
+  </main>
+
+  <div class="pal-bar">
+    <div id="pal-summary" class="pal-summary">Nothing selected yet</div>
+    <button id="pal-clear" class="link" hidden>Clear</button>
+    <a id="pal-go" class="btn" href="index.html">Show all products</a>
+  </div>
+
+  <script type="module" src="palettes.js"></script>
+</body>
+</html>
