@@ -3,22 +3,22 @@
     "satisfy": {
       "ok": true,
       "count": 714,
-      "updatedAt": "2026-10-09T13:37:00.658Z"
+      "updatedAt": "2026-10-09T13:59:09.375Z"
     },
     "uvu": {
       "ok": true,
       "count": 104,
-      "updatedAt": "2026-10-09T13:37:02.508Z"
+      "updatedAt": "2026-10-09T13:59:10.930Z"
     },
     "kayo": {
       "ok": true,
       "count": 2204,
-      "updatedAt": "2026-10-09T13:37:14.661Z"
+      "updatedAt": "2026-10-09T13:59:23.782Z"
     }
   },
-  "lastRun": "2026-10-09T13:37:14.724Z",
+  "lastRun": "2026-10-09T14:00:02.468Z",
   "total": 3022,
   "unmapped": {
-    "satisfy: (none)": 36
+    "kayo: Objekt": 4
   }
 }

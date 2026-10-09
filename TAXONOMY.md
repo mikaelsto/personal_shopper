@@ -6,75 +6,75 @@ Rules live in `scripts/lib/taxonomy.mjs`; products the rules can only guess are 
 
 ## Tops
 
-- **T-shirts** `tops/t-shirts` · 397 products
-- **Long sleeve** `tops/long-sleeve` · 155 products
+- **T-shirts** `tops/t-shirts` · 414 products
+- **Long sleeve** `tops/long-sleeve` · 156 products
 - **Singlets & tanks** `tops/singlets` · 160 products
-- **Shirts** `tops/shirts` · 61 products
+- **Shirts** `tops/shirts` · 63 products
 - **Sports bras** `tops/sports-bras` · 15 products
-- **Base layer tops** `tops/base-layers` · 20 products
+- **Base layer tops** `tops/base-layers` · 21 products
 
 ## Mid layers
 
-- **Fleece, knit & half-zips** `midlayers/fleece-knit` · 92 products
+- **Fleece, knit & half-zips** `midlayers/fleece-knit` · 93 products
 - **Hoodies & sweatshirts** `midlayers/hoodies` · 90 products
 
 ## Outerwear
 
-- **Wind & rain jackets** `outerwear/wind-rain` · 156 products
+- **Wind & rain jackets** `outerwear/wind-rain` · 162 products
 - **Shell jackets** `outerwear/shell` · 52 products
 - **Down & insulated** `outerwear/insulated` · 103 products
 - **Vests & gilets** `outerwear/vests` · 32 products
-- **Other jackets** `outerwear/jackets` · 14 products
+- **Other jackets** `outerwear/jackets` · 3 products
 
 ## Bottoms
 
-- **Shorts** `bottoms/shorts` · 236 products
+- **Shorts** `bottoms/shorts` · 240 products
 - **Tights & leggings** `bottoms/tights` · 65 products
-- **Pants** `bottoms/pants` · 124 products
+- **Pants** `bottoms/pants` · 125 products
 - **Shell & rain pants** `bottoms/shell-pants` · 27 products
 - **Skirts** `bottoms/skirts` · 0 products
 - **Base layer bottoms** `bottoms/base-layers` · 0 products
 
 ## Footwear
 
-- **Road running** `footwear/road-running` · 233 products
-- **Trail running** `footwear/trail-running` · 67 products
+- **Road running** `footwear/road-running` · 234 products
+- **Trail running** `footwear/trail-running` · 75 products
 - **Hiking** `footwear/hiking` · 43 products
 - **Boots** `footwear/boots` · 21 products
 - **Casual & lifestyle** `footwear/casual` · 150 products
 - **Slides & sandals** `footwear/slides-sandals` · 20 products
 - **Court & tennis** `footwear/court` · 3 products
-- **Other footwear** `footwear/other` · 8 products
+- **Other footwear** `footwear/other` · 0 products
 
 ## Accessories
 
 - **Caps** `accessories/caps` · 138 products
 - **Beanies** `accessories/beanies` · 45 products
 - **Hats & headbands** `accessories/hats` · 28 products
-- **Neck warmers, bandanas & balaclavas** `accessories/neckwear` · 47 products
-- **Gloves & mittens** `accessories/gloves` · 32 products
+- **Neck warmers, bandanas & balaclavas** `accessories/neckwear` · 49 products
+- **Gloves & mittens** `accessories/gloves` · 33 products
 - **Socks** `accessories/socks` · 50 products
-- **Sunglasses & eyewear** `accessories/sunglasses` · 53 products
+- **Sunglasses & eyewear** `accessories/sunglasses` · 59 products
 - **Watches** `accessories/watches` · 8 products
-- **Hydration** `accessories/hydration` · 40 products
-- **Other accessories** `accessories/other` · 10 products
+- **Hydration** `accessories/hydration` · 41 products
+- **Other accessories** `accessories/other` · 8 products
 
 ## Bags
 
 - **Backpacks** `bags/backpacks` · 34 products
 - **Duffels & totes** `bags/duffels-totes` · 50 products
-- **Small bags & running belts** `bags/small-bags` · 43 products
+- **Small bags & running belts** `bags/small-bags` · 48 products
 
 ## Gear & lifestyle _(hidden by default)_
 
-- **Cooking** `gear/cooking` · 10 products
+- **Cooking** `gear/cooking` · 11 products
 - **Knives & tools** `gear/knives-tools` · 7 products
-- **Camping & sleeping** `gear/camping` · 3 products
+- **Camping & sleeping** `gear/camping` · 6 products
 - **Climbing** `gear/climbing` · 4 products
 - **Furniture** `gear/furniture` · 15 products
 - **Lighting** `gear/lighting` · 1 products
-- **Books & magazines** `gear/books-media` · 14 products
-- **Other gear** `gear/other` · 10 products
+- **Books & magazines** `gear/books-media` · 15 products
+- **Other gear** `gear/other` · 1 products
 
 ## Store category mapping
 
@@ -136,12 +136,12 @@ Rules live in `scripts/lib/taxonomy.mjs`; products the rules can only guess are 
 | KA-YO | Herr tofflor | Footwear › Slides & sandals (13) |
 | KA-YO | Herr Överdelar | Tops › T-shirts (1), Tops › Singlets & tanks (1) |
 | KA-YO | Herrdunjackor | Outerwear › Down & insulated (43) |
-| KA-YO | Herrjackor | Outerwear › Other jackets (6), Mid layers › Fleece, knit & half-zips (1) |
+| KA-YO | Herrjackor | Outerwear › Other jackets (3), Outerwear › Wind & rain jackets (2), Tops › Shirts (1), Mid layers › Fleece, knit & half-zips (1) |
 | KA-YO | Herrkängor | Footwear › Boots (12) |
 | KA-YO | Herrtröjor & Hoodies | Mid layers › Hoodies & sweatshirts (50), Mid layers › Fleece, knit & half-zips (7) |
 | KA-YO | Herrvästar | Outerwear › Vests & gilets (26), Outerwear › Down & insulated (5) |
 | KA-YO | Hydrering | Accessories › Hydration (22) |
-| KA-YO | KA_YO_PROTOTYPE | Accessories › Neck warmers, bandanas & balaclavas (1), Bags › Small bags & running belts (1), Outerwear › Other jackets (1), Gear & lifestyle › Other gear (1), Outerwear › Wind & rain jackets (1) |
+| KA-YO | KA_YO_PROTOTYPE | Accessories › Neck warmers, bandanas & balaclavas (1), Bags › Small bags & running belts (1), Tops › Shirts (1), Bottoms › Pants (1), Outerwear › Wind & rain jackets (1) |
 | KA-YO | Kepsar | Accessories › Caps (61), Accessories › Hats & headbands (11) |
 | KA-YO | Klockor | Accessories › Watches (6) |
 | KA-YO | Klättringsutrustning | Gear & lifestyle › Climbing (4) |
@@ -151,8 +151,8 @@ Rules live in `scripts/lib/taxonomy.mjs`; products the rules can only guess are 
 | KA-YO | Mössor | Accessories › Beanies (39), Accessories › Hats & headbands (6), Accessories › Caps (1) |
 | KA-YO | Nackvärmare | Accessories › Neck warmers, bandanas & balaclavas (6), Accessories › Hats & headbands (1) |
 | KA-YO | Nyheter | Accessories › Caps (1) |
-| KA-YO | Objekt | Gear & lifestyle › Other gear (9), Gear & lifestyle › Books & magazines (2), Accessories › Other accessories (2) |
-| KA-YO | REA | Outerwear › Other jackets (1) |
+| KA-YO | Objekt | Other › Other (4), Gear & lifestyle › Books & magazines (3), Gear & lifestyle › Camping & sleeping (3), Accessories › Other accessories (2), Gear & lifestyle › Cooking (1) |
+| KA-YO | REA | Mid layers › Fleece, knit & half-zips (1) |
 | KA-YO | Ryggsäckar | Bags › Backpacks (33) |
 | KA-YO | Ski & Snow | Accessories › Gloves & mittens (1) |
 | KA-YO | Små väskor | Bags › Small bags & running belts (41) |
@@ -161,10 +161,10 @@ Rules live in `scripts/lib/taxonomy.mjs`; products the rules can only guess are 
 | KA-YO | Vattenflaskor | Accessories › Hydration (6) |
 | KA-YO | Väskor & Ryggsäckar | Bags › Backpacks (1) |
 | KA-YO | Väskor | Bags › Small bags & running belts (1) |
-| Satisfy | (none) | Tops › T-shirts (86), Other › Other (36), Accessories › Caps (35), Bottoms › Shorts (34), Tops › Singlets & tanks (32), Tops › Long sleeve (26), Accessories › Neck warmers, bandanas & balaclavas (16), Tops › Shirts (13), Bottoms › Pants (10), Mid layers › Hoodies & sweatshirts (8), Mid layers › Fleece, knit & half-zips (8), Bottoms › Tights & leggings (7), Accessories › Socks (5), Outerwear › Other jackets (5), Accessories › Beanies (4), Accessories › Gloves & mittens (4), Outerwear › Wind & rain jackets (4), Tops › Base layer tops (3), Footwear › Road running (2), Accessories › Hydration (2), Accessories › Other accessories (2), Accessories › Watches (2), Gear & lifestyle › Books & magazines (2), Footwear › Boots (1), Bottoms › Shell & rain pants (1), Accessories › Hats & headbands (1), Outerwear › Down & insulated (1) |
+| Satisfy | (none) | Tops › T-shirts (103), Bottoms › Shorts (38), Accessories › Caps (35), Tops › Singlets & tanks (32), Tops › Long sleeve (27), Accessories › Neck warmers, bandanas & balaclavas (18), Tops › Shirts (13), Bottoms › Pants (10), Mid layers › Hoodies & sweatshirts (8), Mid layers › Fleece, knit & half-zips (8), Bottoms › Tights & leggings (7), Outerwear › Wind & rain jackets (7), Accessories › Sunglasses & eyewear (6), Accessories › Socks (5), Accessories › Gloves & mittens (5), Tops › Base layer tops (4), Accessories › Beanies (4), Footwear › Road running (3), Accessories › Hydration (3), Accessories › Other accessories (3), Bags › Small bags & running belts (2), Accessories › Watches (2), Gear & lifestyle › Books & magazines (2), Footwear › Boots (1), Bottoms › Shell & rain pants (1), Gear & lifestyle › Other gear (1), Accessories › Hats & headbands (1), Outerwear › Down & insulated (1) |
 | Satisfy | Accessory | Accessories › Other accessories (1) |
 | Satisfy | Bandana | Accessories › Neck warmers, bandanas & balaclavas (20) |
-| Satisfy | Belt | Accessories › Other accessories (3) |
+| Satisfy | Belt | Bags › Small bags & running belts (3) |
 | Satisfy | Cap | Accessories › Caps (31) |
 | Satisfy | Flask | Accessories › Hydration (7) |
 | Satisfy | Gloves | Accessories › Gloves & mittens (6) |
@@ -173,7 +173,7 @@ Rules live in `scripts/lib/taxonomy.mjs`; products the rules can only guess are 
 | Satisfy | Magazine | Gear & lifestyle › Books & magazines (10) |
 | Satisfy | Neck Warmer | Accessories › Neck warmers, bandanas & balaclavas (1) |
 | Satisfy | Pants | Bottoms › Shell & rain pants (5), Bottoms › Pants (1) |
-| Satisfy | Shoes | Footwear › Other footwear (8), Footwear › Road running (6) |
+| Satisfy | Shoes | Footwear › Trail running (8), Footwear › Road running (6) |
 | Satisfy | Shorts | Bottoms › Shorts (38), Bottoms › Tights & leggings (8) |
 | Satisfy | Socks | Accessories › Socks (11) |
 | Satisfy | Sunglasses | Accessories › Sunglasses & eyewear (14) |
@@ -184,7 +184,7 @@ Rules live in `scripts/lib/taxonomy.mjs`; products the rules can only guess are 
 | UVU | Caps | Accessories › Caps (1) |
 | UVU | Hats | Accessories › Caps (6) |
 | UVU | Hoodies | Mid layers › Hoodies & sweatshirts (4) |
-| UVU | Outerwear | Outerwear › Wind & rain jackets (3), Outerwear › Other jackets (1) |
+| UVU | Outerwear | Outerwear › Wind & rain jackets (4) |
 | UVU | Pants | Bottoms › Pants (1) |
 | UVU | Shoes | Footwear › Slides & sandals (2) |
 | UVU | Shorts | Bottoms › Shorts (13), Bottoms › Tights & leggings (9) |
