@@ -1,0 +1,70 @@
+name: Update products & deploy site
+
+on:
+  schedule:
+    - cron: '0 4 * * *' # daily 04:00 UTC (06:00 Swedish time)
+  workflow_dispatch:
+    inputs:
+      stores:
+        description: 'Store ids to refresh, comma-separated (empty = all), e.g. satisfy,uvu'
+        required: false
+        default: ''
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: update-and-deploy
+  cancel-in-progress: false
+
+jobs:
+  update:
+    # On a normal code push we only redeploy; scraping runs on schedule / manual trigger.
+    if: github.event_name != 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Fetch products
+        env:
+          STORES: ${{ inputs.stores }}
+        run: node scripts/update.mjs
+      - name: Commit data
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data
+          if git diff --cached --quiet; then
+            echo "No changes"
+          else
+            git commit -m "Update product data $(date -u +%F)"
+            git push
+          fi
+
+  deploy:
+    needs: update
+    if: ${{ !cancelled() && (needs.update.result == 'success' || needs.update.result == 'skipped') }}
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main # include the data commit made by the update job
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: node scripts/build-site.mjs
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - id: deployment
+        uses: actions/deploy-pages@v4
