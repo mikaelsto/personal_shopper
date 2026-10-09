@@ -3,6 +3,7 @@
 // kept in the URL (?palette=…&color=…&exclude=black,white) so it can be shared, and in localStorage so it's remembered.
 
 import { paletteById } from './lib/palettes.mjs';
+import { REPO, store } from './shop-utils.js';
 
 // Matching itself lives in lib/palette-match.mjs (shared with scripts/palette-eval.mjs).
 export {
@@ -47,4 +48,25 @@ export function saveSelection(sel) {
   history.replaceState(null, '', `${location.pathname}${q.size ? `?${q}` : ''}${location.hash}`);
 }
 
-export const loadColorOverrides = () => fetch('data/color-names.json').then((r) => (r.ok ? r.json() : {})).catch(() => ({}));
+// Resolved from this module, so pages in subfolders (social/) find the data too.
+export const loadColorOverrides = () => fetch(new URL('data/color-names.json', import.meta.url)).then((r) => (r.ok ? r.json() : {})).catch(() => ({}));
+
+// 👍/👎 "is this in my palette?" votes are keyed "<productId> <voteKey>". Votes are about
+// palette fit, so the colour exclusions aren't part of the key.
+export const voteKey = (sel) => { const q = selectionParams(sel); q.delete('exclude'); return q.toString(); };
+export const FEEDBACK_LINES_PER_ISSUE = 120; // keeps the pre-filled issue URL under GitHub's limit
+
+// Opens a pre-filled GitHub issue with unsent votes; the "Palette feedback" workflow
+// adds them to data/palette-labels.json and replies with the current matching accuracy.
+export function sendVotes(votes) {
+  const unsent = Object.entries(votes).filter(([, x]) => !x.sent).slice(0, FEEDBACK_LINES_PER_ISSUE);
+  if (!unsent.length) return;
+  const lines = unsent.map(([key, x]) => `${x.v > 0 ? '+' : '-'} ${key}`);
+  const url = `https://github.com/${REPO}/issues/new?` + new URLSearchParams({
+    title: `Palette feedback: ${unsent.length} votes`,
+    body: `Votes from Personal Shopper ("is this product in my palette?"). Submit the issue; a workflow saves them as labels.\n\n\`\`\`\n${lines.join('\n')}\n\`\`\``,
+  });
+  for (const [key] of unsent) votes[key].sent = true;
+  store.set('paletteVotes', votes);
+  window.open(url, '_blank', 'noopener');
+}

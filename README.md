@@ -4,6 +4,8 @@ One place to browse running and fashion apparel from several stores. It has a sh
 
 **Site:** https://mikaelsto.github.io/personal_shopper/
 
+**Feed:** https://mikaelsto.github.io/personal_shopper/social/ is a mobile-first, Reels-style version. You see one product per screen and swipe up for the next. Drag the photo left for its details. ☰ in the photo's footer opens colours, categories and sizes. The product page opens in a new tab, from the photo or from "To the product page".
+
 ## Stores
 
 Stores are listed in `data/stores.json`. Defaults: **Satisfy**, **UVU**, **KA-YO**.

@@ -8,42 +8,16 @@ import { PALETTES, FAMILIES, paletteById } from './lib/palettes.mjs';
 import {
   loadSelection, saveSelection, selectionParams, isActive, targetColors, attachSwatches,
   matchingColorways, matchInfo, loadColorOverrides, colorName, EXCLUDABLE, isExcluded, passesExclude,
+  voteKey, FEEDBACK_LINES_PER_ISSUE, sendVotes,
 } from './palette-filter.js';
+import { REPO, esc, sek, store, catLabel, displayTitle, thumb, sizeLetter, shortSize, historyHtml } from './shop-utils.js';
 
-const REPO = 'mikaelsto/personal_shopper';
 const PAGE = 60;
 // Sourcing labels narrow the fibre choice ("recycled" AND any chosen fibre) instead of widening it.
 const SOURCING = ['recycled', 'organic'];
 const HIDDEN_DEPTS = TAXONOMY.filter((d) => d.hidden).map((d) => d.id);
-const catLabel = (p) => (p.subcategory && p.subcategory !== 'other' ? `${label(p.category)} › ${label(p.subcategory)}` : 'Other');
 
 const $ = (s) => document.querySelector(s);
-const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const sek = (n) => (n == null ? '–' : `${Math.round(n).toLocaleString('sv-SE')} kr`);
-const store = {
-  get: (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } },
-  set: (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
-};
-
-// Use smaller image variants where the store's image server offers them.
-const thumb = (url, w = 500) => {
-  if (!url) return url;
-  if (url.includes('cdn.shopify.com')) return `${url}${url.includes('?') ? '&' : '?'}width=${w}`;
-  if (url.includes('images.ka-yo.com/product/1000f1239/') && w <= 500) return url.replace('/1000f1239/', '/300f371/');
-  return url;
-};
-
-// Normalise size labels like "Size 1 (S)" or "Medium" to S/M/L…
-function sizeLetter(s) {
-  if (!s) return null;
-  const m = String(s).toUpperCase().match(/\b(XXS|XS|S|M|L|XL|XXL|2XL|3XL)\b/);
-  if (m) return m[1] === '2XL' ? 'XXL' : m[1];
-  const word = { SMALL: 'S', MEDIUM: 'M', LARGE: 'L' }[String(s).toUpperCase().trim()];
-  return word ?? null;
-}
-
-// Compact label for cards: "Size 1 (S)" -> "S", "US M8 / UK 7½ / EU 41⅓" -> "EU 41⅓".
-const shortSize = (s) => sizeLetter(s) ?? (String(s).match(/EU\s*([\d½⅓⅔.,]+)/)?.[0].replace(/\s+/, ' ')) ?? s;
 
 let all = [];
 let stores = []; // registered stores (data/stores.json) + pending ones added in this browser
@@ -58,7 +32,6 @@ let targets = targetColors(palette);
 // 👍/👎 "is this in my palette?" votes: { "<productId> <selection>": { v: 1|-1, at, sent } }.
 // Sent to GitHub as labels that scripts/palette-eval.mjs scores the matching against.
 const votes = store.get('paletteVotes', {});
-const FEEDBACK_LINES_PER_ISSUE = 120; // keeps the pre-filled issue URL under GitHub's limit
 
 const state = {
   q: '', stores: new Set(), category: '', features: new Set(), fabrics: new Set(),
@@ -236,8 +209,7 @@ function computeMatches(list) {
 // In the palette (if one is chosen) and not only in excluded colours (e.g. "no black or white").
 const inPalette = (p) => passesExclude(p, palette.exclude) && (!targets.length || !!p._pm);
 
-// Votes are about palette fit, so the colour exclusions aren't part of their key.
-const selKey = () => { const q = selectionParams(palette); q.delete('exclude'); return q.toString(); };
+const selKey = () => voteKey(palette);
 const voteOf = (p) => votes[`${p.id} ${selKey()}`]?.v ?? 0;
 
 function vote(id, v) {
@@ -252,19 +224,8 @@ function vote(id, v) {
   card?.classList.toggle('rated-down', votes[key]?.v === -1);
 }
 
-// Opens a pre-filled GitHub issue with unsent votes; the "Palette feedback" workflow
-// adds them to data/palette-labels.json and replies with the current matching accuracy.
 function sendFeedback() {
-  const unsent = Object.entries(votes).filter(([, x]) => !x.sent).slice(0, FEEDBACK_LINES_PER_ISSUE);
-  if (!unsent.length) return;
-  const lines = unsent.map(([key, x]) => `${x.v > 0 ? '+' : '-'} ${key}`);
-  const url = `https://github.com/${REPO}/issues/new?` + new URLSearchParams({
-    title: `Palette feedback: ${unsent.length} votes`,
-    body: `Votes from Personal Shopper ("is this product in my palette?"). Submit the issue; a workflow saves them as labels.\n\n\`\`\`\n${lines.join('\n')}\n\`\`\``,
-  });
-  for (const [key] of unsent) votes[key].sent = true;
-  store.set('paletteVotes', votes);
-  window.open(url, '_blank', 'noopener');
+  sendVotes(votes);
   renderPaletteFilter();
 }
 
@@ -384,7 +345,6 @@ function apply() {
   render();
 }
 
-const displayTitle = (p) => (p.colors.length === 1 ? `${p.title} – ${p.colors[0]}` : p.title);
 
 function priceHtml(p) {
   return p.compareAt
@@ -552,16 +512,7 @@ async function openDetail(id) {
 
 function renderHistory(h) {
   const el = $('#history');
-  if (!el) return;
-  if (h.length < 2) {
-    el.textContent = h.length ? `${sek(h[0][1])} since ${h[0][0]} (no changes yet)` : 'No history yet';
-    return;
-  }
-  const prices = h.map(([, v]) => v);
-  const lo = Math.min(...prices), hi = Math.max(...prices);
-  const pts = h.map(([, v], i) => `${(i / (h.length - 1)) * 300},${55 - ((v - lo) / (hi - lo || 1)) * 50}`).join(' ');
-  el.innerHTML = `<svg viewBox="0 0 300 60" preserveAspectRatio="none"><polyline fill="none" stroke="var(--accent)" stroke-width="2" points="${pts}"/></svg>
-    ${h.map(([d, v]) => `${d}: ${sek(v)}`).join(' → ')}`;
+  if (el) el.innerHTML = historyHtml(h);
 }
 
 // ---------- Add store ----------
