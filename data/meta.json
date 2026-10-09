@@ -3,89 +3,87 @@
     "satisfy": {
       "ok": true,
       "count": 714,
-      "updatedAt": "2026-10-09T17:44:46.197Z"
+      "updatedAt": "2026-10-09T17:54:33.960Z"
     },
     "uvu": {
       "ok": true,
       "count": 104,
-      "updatedAt": "2026-10-09T17:44:47.653Z"
+      "updatedAt": "2026-10-09T17:54:36.125Z"
     },
     "kayo": {
       "ok": true,
       "count": 2204,
-      "updatedAt": "2026-10-09T17:44:58.547Z"
+      "updatedAt": "2026-10-09T17:54:49.159Z"
     },
     "loplabbet": {
       "ok": true,
       "count": 2813,
-      "updatedAt": "2026-10-09T17:45:49.903Z"
+      "updatedAt": "2026-10-09T17:55:30.732Z"
     },
     "passasports": {
       "ok": true,
       "count": 6781,
-      "updatedAt": "2026-10-09T17:45:50.418Z"
+      "updatedAt": "2026-10-09T17:55:31.753Z"
     },
     "incylence": {
       "ok": true,
       "count": 103,
-      "updatedAt": "2026-10-09T17:47:28.245Z"
+      "updatedAt": "2026-10-09T17:55:34.358Z"
     },
     "saysky": {
       "ok": true,
       "count": 808,
-      "updatedAt": "2026-10-09T17:47:37.334Z"
+      "updatedAt": "2026-10-09T17:55:44.549Z"
     },
     "soarrunning": {
       "ok": true,
       "count": 367,
-      "updatedAt": "2026-10-09T17:47:41.079Z"
+      "updatedAt": "2026-10-09T17:55:48.199Z"
     },
     "actrunning": {
       "ok": true,
       "count": 193,
-      "updatedAt": "2026-10-09T17:47:43.837Z"
+      "updatedAt": "2026-10-09T17:55:51.496Z"
     },
     "banditrunning": {
       "ok": true,
       "count": 1150,
-      "updatedAt": "2026-10-09T17:47:53.034Z"
+      "updatedAt": "2026-10-09T17:56:00.863Z"
     },
     "districtvision": {
       "ok": true,
       "count": 630,
-      "updatedAt": "2026-10-09T17:47:57.701Z"
+      "updatedAt": "2026-10-09T17:56:05.997Z"
     },
     "doxarun": {
       "ok": true,
       "count": 76,
-      "updatedAt": "2026-10-09T17:47:59.740Z"
+      "updatedAt": "2026-10-09T17:56:08.365Z"
     },
     "sumsclub": {
       "ok": true,
       "count": 18,
-      "updatedAt": "2026-10-09T17:48:01.494Z"
+      "updatedAt": "2026-10-09T17:56:10.388Z"
     },
     "ymrtrackclub": {
       "ok": true,
       "count": 189,
-      "updatedAt": "2026-10-09T17:48:04.551Z"
+      "updatedAt": "2026-10-09T17:56:13.923Z"
     }
   },
-  "lastRun": "2026-10-09T17:48:04.676Z",
+  "lastRun": "2026-10-09T18:02:47.049Z",
   "total": 16150,
   "unmapped": {
-    "passasports: Löparkläder/Kläder": 171,
-    "banditrunning: (none)": 43,
-    "saysky: Bundle": 13,
+    "passasports: Löparkläder/Kläder": 69,
+    "saysky: Bundle": 9,
     "ymrtrackclub: (none)": 9,
-    "districtvision: Mens": 6,
-    "banditrunning: Unclassified": 5,
-    "banditrunning: Bottoms": 5,
-    "actrunning: (none)": 4,
     "kayo: Objekt": 4,
+    "banditrunning: Bottoms": 3,
+    "banditrunning: (none)": 3,
     "banditrunning: Bottom": 2,
     "banditrunning: Insurance": 1,
     "banditrunning: Membership": 1,
+    "loplabbet: Tillbehör/Presentkort": 1,
     "soarrunning: February 26 launches": 1,
     "soarrunning: Custom Bundle": 1,
     "sumsclub: (none)": 1
