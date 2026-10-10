@@ -6,7 +6,7 @@ Rules live in `scripts/lib/taxonomy.mjs`; products the rules can only guess are 
 
 ## Tops
 
-- **T-shirts** `tops/t-shirts` · 1741 products
+- **T-shirts** `tops/t-shirts` · 1742 products
 - **Long sleeve** `tops/long-sleeve` · 921 products
 - **Singlets & tanks** `tops/singlets` · 1128 products
 - **Shirts** `tops/shirts` · 78 products
@@ -29,7 +29,7 @@ Rules live in `scripts/lib/taxonomy.mjs`; products the rules can only guess are 
 ## Bottoms
 
 - **Shorts** `bottoms/shorts` · 1570 products
-- **Tights & leggings** `bottoms/tights` · 1036 products
+- **Tights & leggings** `bottoms/tights` · 1037 products
 - **Pants** `bottoms/pants` · 321 products
 - **Shell & rain pants** `bottoms/shell-pants` · 27 products
 - **Skirts** `bottoms/skirts` · 6 products
@@ -38,12 +38,12 @@ Rules live in `scripts/lib/taxonomy.mjs`; products the rules can only guess are 
 
 ## Footwear
 
-- **Road running** `footwear/road-running` · 3672 products
-- **Trail running** `footwear/trail-running` · 331 products
+- **Road running** `footwear/road-running` · 3674 products
+- **Trail running** `footwear/trail-running` · 333 products
 - **Hiking** `footwear/hiking` · 43 products
 - **Boots** `footwear/boots` · 21 products
 - **Casual & lifestyle** `footwear/casual` · 192 products
-- **Slides & sandals** `footwear/slides-sandals` · 39 products
+- **Slides & sandals** `footwear/slides-sandals` · 38 products
 - **Court & tennis** `footwear/court` · 3 products
 - **Other footwear** `footwear/other` · 0 products
 
@@ -54,9 +54,9 @@ Rules live in `scripts/lib/taxonomy.mjs`; products the rules can only guess are 
 - **Hats & headbands** `accessories/hats` · 174 products
 - **Neck warmers, bandanas & balaclavas** `accessories/neckwear` · 104 products
 - **Gloves & mittens** `accessories/gloves` · 71 products
-- **Socks** `accessories/socks` · 955 products
+- **Socks** `accessories/socks` · 956 products
 - **Sunglasses & eyewear** `accessories/sunglasses` · 267 products
-- **Watches** `accessories/watches` · 134 products
+- **Watches** `accessories/watches` · 135 products
 - **Hydration** `accessories/hydration` · 85 products
 - **Headlamps & running lights** `accessories/lights` · 38 products
 - **Insoles & shoe care** `accessories/insoles-care` · 51 products
@@ -78,7 +78,7 @@ Rules live in `scripts/lib/taxonomy.mjs`; products the rules can only guess are 
 - **Furniture** `gear/furniture` · 15 products
 - **Lighting** `gear/lighting` · 1 products
 - **Books & magazines** `gear/books-media` · 17 products
-- **Sports nutrition** `gear/nutrition` · 99 products
+- **Sports nutrition** `gear/nutrition` · 98 products
 - **Fitness equipment** `gear/fitness` · 56 products
 - **Headphones & electronics** `gear/electronics` · 27 products
 - **Other gear** `gear/other` · 1 products
@@ -136,7 +136,7 @@ Rules live in `scripts/lib/taxonomy.mjs`; products the rules can only guess are 
 | Incylence | Running Cap | Accessories › Caps (5) |
 | Incylence | Running High-Cut | Accessories › Socks (40) |
 | Incylence | Running Low-Cut | Bottoms › Shorts (15) |
-| Incylence | merino | Accessories › Socks (8) |
+| Incylence | merino | Accessories › Socks (7) |
 | KA-YO | BH:ar | Tops › Sports bras (15), Tops › Singlets & tanks (2) |
 | KA-YO | Balaklava | Accessories › Neck warmers, bandanas & balaclavas (3) |
 | KA-YO | Belysning | Gear & lifestyle › Lighting (1) |
@@ -236,12 +236,12 @@ Rules live in `scripts/lib/taxonomy.mjs`; products the rules can only guess are 
 | Löplabbet | Kläder/Linnen/Linnen funktion | Tops › Singlets & tanks (6) |
 | Löplabbet | Kläder/Shorts | Bottoms › Shorts (84), Bottoms › Tights & leggings (13), Bottoms › Skirts (1) |
 | Löplabbet | Kläder/Shorts/Träningsshorts | Bottoms › Shorts (38) |
-| Löplabbet | Kläder/Strumpor | Accessories › Socks (147), Accessories › Supports, protection & anti-chafe (1) |
-| Löplabbet | Kläder/T-Shirt & Toppar/T-Shirt funktion | Tops › T-shirts (39), Tops › Shirts (2) |
+| Löplabbet | Kläder/Strumpor | Accessories › Socks (148), Accessories › Supports, protection & anti-chafe (1) |
+| Löplabbet | Kläder/T-Shirt & Toppar/T-Shirt funktion | Tops › T-shirts (40), Tops › Shirts (2) |
 | Löplabbet | Kläder/T-Shirt & Toppar/T-Shirt | Accessories › Watches (1) |
 | Löplabbet | Kläder/T-shirt & Toppar | Tops › T-shirts (75), Tops › Long sleeve (25), Footwear › Road running (13), Mid layers › Fleece, knit & half-zips (9), Mid layers › Hoodies & sweatshirts (6), Tops › Shirts (4), Bottoms › Shorts (1) |
 | Löplabbet | Kläder/Tights | Bottoms › Tights & leggings (65) |
-| Löplabbet | Kläder/Tights/Löpartights | Bottoms › Tights & leggings (25), Bottoms › Shorts (1) |
+| Löplabbet | Kläder/Tights/Löpartights | Bottoms › Tights & leggings (26), Bottoms › Shorts (1) |
 | Löplabbet | Kläder/Tights/Träningstights | Bottoms › Tights & leggings (4) |
 | Löplabbet | Kläder/Tights/Vintertights | Bottoms › Tights & leggings (3) |
 | Löplabbet | Kläder/Tröjor/Träningströjor | Mid layers › Fleece, knit & half-zips (17), Tops › T-shirts (6), Tops › Long sleeve (1) |
@@ -251,27 +251,27 @@ Rules live in `scripts/lib/taxonomy.mjs`; products the rules can only guess are 
 | Löplabbet | Kläder/Underkläder/Sport-BH/High | Tops › Sports bras (3) |
 | Löplabbet | Kläder/Underkläder/Sport-BH/Low | Tops › Sports bras (1) |
 | Löplabbet | Kläder/Underkläder/Sport-BH/Medium | Tops › Sports bras (1) |
-| Löplabbet | Kläder/Underkläder/Strumpor | Accessories › Socks (19) |
+| Löplabbet | Kläder/Underkläder/Strumpor | Accessories › Socks (20) |
 | Löplabbet | Kläder/Underkläder/Trosor | Bottoms › Underwear (4) |
 | Löplabbet | Kläder/Underkläder/Underställ | Tops › Base layer tops (20), Tops › Long sleeve (5) |
-| Löplabbet | Löparskor/Distans | Footwear › Road running (325), Footwear › Trail running (2) |
+| Löplabbet | Löparskor/Distans | Footwear › Road running (326), Footwear › Trail running (2) |
 | Löplabbet | Löparskor/Friidrott | Footwear › Road running (12) |
 | Löplabbet | Löparskor/Promenad | Footwear › Casual & lifestyle (30), Footwear › Road running (3) |
-| Löplabbet | Löparskor/Tempo | Footwear › Road running (163), Footwear › Trail running (1) |
+| Löplabbet | Löparskor/Tempo | Footwear › Road running (164), Footwear › Trail running (1) |
 | Löplabbet | Löparskor/Terräng | Footwear › Trail running (135), Footwear › Road running (2) |
 | Löplabbet | Löparskor/Återhämtning | Footwear › Slides & sandals (6) |
 | Löplabbet | Skor/Löparskor/Distans/Neutral | Footwear › Road running (269) |
 | Löplabbet | Skor/Löparskor/Distans/Stabil | Footwear › Road running (90) |
 | Löplabbet | Skor/Löparskor/Tempo | Footwear › Road running (132) |
-| Löplabbet | Skor/Löparskor/Trailskor | Footwear › Trail running (64), Footwear › Road running (2) |
-| Löplabbet | Skor/Sandaler & Tofflor | Footwear › Slides & sandals (12) |
+| Löplabbet | Skor/Löparskor/Trailskor | Footwear › Trail running (66), Footwear › Road running (2) |
+| Löplabbet | Skor/Sandaler & Tofflor | Footwear › Slides & sandals (11) |
 | Löplabbet | Skor/Träningsskor | Footwear › Road running (2) |
 | Löplabbet | Skor/Walkingskor | Footwear › Casual & lifestyle (12) |
 | Löplabbet | Tillbehör/Antiskav | Accessories › Supports, protection & anti-chafe (3) |
 | Löplabbet | Tillbehör/Energi & Sportdryck | Gear & lifestyle › Sports nutrition (80) |
 | Löplabbet | Tillbehör/Glasögon | Accessories › Sunglasses & eyewear (18) |
 | Löplabbet | Tillbehör/Hörlurar | Gear & lifestyle › Headphones & electronics (16) |
-| Löplabbet | Tillbehör/Klockor och tillbehör | Accessories › Watches (36) |
+| Löplabbet | Tillbehör/Klockor och tillbehör | Accessories › Watches (37) |
 | Löplabbet | Tillbehör/Lampor | Accessories › Headlamps & running lights (32), Accessories › Neck warmers, bandanas & balaclavas (1) |
 | Löplabbet | Tillbehör/Löpband | Gear & lifestyle › Fitness equipment (1) |
 | Löplabbet | Tillbehör/Midjeväskor & Mobilhållare | Bags › Small bags & running belts (16) |
@@ -297,7 +297,7 @@ Rules live in `scripts/lib/taxonomy.mjs`; products the rules can only guess are 
 | Löplabbet | Utrustning/Väskor/Ryggsäckar/Löparryggsäckar | Bags › Backpacks (11) |
 | Löplabbet | Utrustning/Väskor/Övriga väskor | Bags › Backpacks (1) |
 | Löplabbet | Utrustning/Övrigt/Flaskor & Vätskebälten | Accessories › Hydration (14) |
-| Löplabbet | Utrustning/Övrigt/Kosttillskott | Gear & lifestyle › Sports nutrition (19) |
+| Löplabbet | Utrustning/Övrigt/Kosttillskott | Gear & lifestyle › Sports nutrition (18) |
 | Löplabbet | Utrustning/Övrigt/Skotillbehör | Accessories › Insoles & shoe care (16) |
 | Löplabbet | Utrustning/Övrigt/Skotillbehör/Skosulor | Accessories › Insoles & shoe care (4) |
 | Löplabbet | Utrustning/Övrigt/Träningsvästar | Outerwear › Vests & gilets (2) |
